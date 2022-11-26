@@ -10,7 +10,29 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ***
-# 1 Data Collection and Exploration
+## 1 Data Collection and Exploration
+## (b)
+```{r}
+image1=read.csv('imagem1.txt',sep='',header=FALSE)
+image2=read.csv('imagem2.txt', sep='',header=FALSE)
+image3=read.csv('imagem3.txt', sep='',header=FALSE)
+image <- rbind(image1,image2,image3)
+colnames(image) = c('y','x','expert_label','NDAI','SD','CORR','DF','CF','BF','AF','AN')
+```
+
+```{r}
+image1b=image[,c(1,2,3)]
+image1b %>% group_by(expert_label) %>% summarise(per=n()/nrow(.)*100)
+```
+The percentage of pixels in cloud (1) class is 36.77552	%
+The percentage of pixels in not cloud (-1) class is 39.78950	%
+The percentage of pixels in unlabeled (0) class is 23.43499	%
+
+```{r}
+ggplot(image1b, aes(x, y, colour = expert_label)) + 
+  geom_point()
+```
+## (c)
 
 
 
