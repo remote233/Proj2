@@ -1,0 +1,32 @@
+---
+title: "Project2"
+author: "Yiliang Yuan & Yiyu Lin"
+date: "2022-11-26"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+***
+# 1 Data Collection and Exploration
+
+
+
+
+
+
+
+
+
+
+# 2 Preparation
+
+# 3 Modeling
+
+# 4 Diagnostics 
+
+
+
+***
