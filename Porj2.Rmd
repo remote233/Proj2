@@ -127,38 +127,58 @@ theme(
 Since the size of our dataset is too large and there are 7 variables to pair, it might not be a good idea to use pairs plot here. Instead, we can draw a heat map for the correlations between the features themselves, and the result is very interesting. NDAI, SD and CORR are positively correlated, and all the radiance variables are also positively correlated. However, radiance and other features(CORR,NDAI,SD) are negatively correlated. In addition, we find that radiance angle AN, AF, BF, CF are strongly correlated since their correlations are all larger than 0.75. Radiance angle DF is strongly correlated to radiance angle CF and BF, but its correlations with radiance angle AF and AN are not that strong.
 
 ```{r}
-p1 = ggplot(image,aes(x=expert_label, y=NDAI))+
+g1 = ggplot(image,aes(x=expert_label, y=NDAI))+
   geom_boxplot()
-p2 = ggplot(image,aes(x=expert_label, y=SD))+
+g2 = ggplot(image,aes(x=expert_label, y=SD))+
   geom_boxplot()
-p3 = ggplot(image,aes(x=expert_label, y=CORR))+
+g3 = ggplot(image,aes(x=expert_label, y=CORR))+
   geom_boxplot()
-p4 = ggplot(image,aes(x=expert_label, y=DF))+
+g4 = ggplot(image,aes(x=expert_label, y=DF))+
   geom_boxplot()
-p5 = ggplot(image,aes(x=expert_label, y=CF))+
+g5 = ggplot(image,aes(x=expert_label, y=CF))+
   geom_boxplot()
-p6 = ggplot(image,aes(x=expert_label, y=BF))+
+g6 = ggplot(image,aes(x=expert_label, y=BF))+
   geom_boxplot()
-p7 = ggplot(image,aes(x=expert_label, y=AF))+
+g7 = ggplot(image,aes(x=expert_label, y=AF))+
   geom_boxplot()
-p8 = ggplot(image,aes(x=expert_label, y=AN))+
+g8 = ggplot(image,aes(x=expert_label, y=AN))+
   geom_boxplot()
 ```
 
 ```{r,fig.width=9,fig.height=3}
-grid.arrange(p1,p2,p3,ncol=3)
+grid.arrange(g1,g2,g3,ncol=3)
 ```
 By plotting the boxplots of NDAI, SD, and CORR with expert label as x-axis, we find that cloud class tends to have higher values of NDAI, SD and CORR.
 ```{r,fig.width=9,fig.height=6}
-grid.arrange(p4,p5,p6,p7,p8,ncol=3)
+grid.arrange(g4,g5,g6,g7,g8,ncol=3)
 ```
 Again, by plotting boxplots of DF, CF, BF, AF and AN with expert labels as x-axis, we find that cloud class tends to have smaller values of radiance in different angles except that in DF. For radiance angle DF, all the classes have similar distributions of radiance values, so it is hard to tell differences between cloud and no cloud classes.
 
 
 # 2 Preparation
-```{r}
 
+## (a)
+When splitting the data, in order to have enough data for training, we can use the data of two pictures as our training set so that the training set takes 66.6% of the entire data. Then, we only need to split the data of one image into a validation and test set. Here, we set the ratio of the amount of data in three sets to be around 6:2:1, so validation set should take about 22.2% of the entire data and test set should take 11.1% of the entire data.
+
+### First Splitting method
+For our first method, we want to use a direct way to split our data. We first set two images to be our training set, and split the remaining picture into three rectangles of equal size. Then, we can take two rectangles as our validation set and one as tesdt set. In this method, we need to make sure that each rectangle we split should contain data from different classes, or be diversified. After checking the three images we plotted in 1(b), we decide to use the first two images as our training set, and split the third one. In the third image, we can set thresholds values for the y-axis, and divide the image into three rectangles accroding to these thresholds values.
+```{r}
+y_max_p3 = max(image3$y)
+y_min_p3 = min(image3$y)
+lim1 = y_max_p3-(y_max_p3-y_min_p3)/3
+lim2 = y_max_p3-(y_max_p3-y_min_p3)/3*2
+p3+geom_hline(yintercept=lim1,color="red")+geom_hline(yintercept = lim2,color="red")
 ```
+From the plot above, we can find that our thresholds for y-axis divide the image into three rectangles containing data from different classes. We can pick the one on the top to be our test set, and the remaining two to be our validation set.
+```{r}
+train_method1 = rbind(image1,image2)
+test_method1 = image3[image3$y>=lim1,]
+validation_method1 = image3[image3$y<lim1,]
+```
+
+
+### Second Method
+
 
 
 
