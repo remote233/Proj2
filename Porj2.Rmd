@@ -10,6 +10,8 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(ggplot2)
 library(gridExtra)
+library(GGally)
+library(reshape2)
 ```
 
 ***
@@ -33,45 +35,132 @@ colnames(image3) = c('y','x','expert_label','NDAI','SD','CORR','DF','CF','BF','A
 image <- rbind(image1,image2,image3)
 ```
 
+First of all, we can find the percentage of pixels for the different classes in different images as:
 ```{r}
-image1b=image[,c(1,2,3)]
-image1b %>% group_by(expert_label) %>% summarise(per=n()/nrow(.)*100)
+per1 <- image1 %>%
+  group_by(expert_label)%>%
+  summarise(image1 = round(n()/nrow(.),3))
+per2 <- image2 %>%
+  group_by(expert_label)%>%
+  summarise(image2 = round(n()/nrow(.),3))
+per3 <- image3 %>%
+  group_by(expert_label)%>%
+  summarise(image3 = round(n()/nrow(.),3))
+per_total <- image %>%
+  group_by(expert_label)%>%
+  summarise(image_total = round(n()/nrow(.),3))
+per_combined <- list(per1,per2,per3,per_total)
+per_combined %>% reduce(full_join, by='expert_label')
 ```
-The percentage of pixels in cloud (1) class is 36.77552	%
-The percentage of pixels in not cloud (-1) class is 39.78950	%
-The percentage of pixels in unlabeled (0) class is 23.43499	%
-
+Then, we can plot the maps of different images by x,y corrdinates values with expert labels as colors as:
 ```{r}
+myColors = c("gray37","black","white")
 p1 = ggplot(image1, aes(x, y, colour = factor(expert_label))) + 
-  geom_point()
+  geom_point(show.legend = FALSE)+
+  scale_color_manual(values=myColors)+
+  labs(colour="expert_label")
 p2 = ggplot(image2, aes(x, y, colour = factor(expert_label))) + 
-  geom_point()
+  geom_point(show.legend = FALSE)+
+  scale_color_manual(values=myColors)+
+  labs(colour="expert_label")
 p3 = ggplot(image3, aes(x, y, colour = factor(expert_label))) + 
-  geom_point()
+  geom_point(show.legend = FALSE)+
+  scale_color_manual(values=myColors)+
+  labs(colour="expert_label")
 ```
     
-```{r,fig.width=10,fig.height=6}
-grid.arrange(p1,p2,p3,ncol=2)
+```{r,fig.width=8,fig.height=3}
+gg_legend <- ggplot(image1, aes(x, y, colour = factor(expert_label))) + 
+  geom_point()+
+  scale_color_manual(values=myColors)+
+  labs(colour="expert_label") +
+  theme(legend.position = "bottom")
+extract_legend <- function(my_ggp) {
+  step1 <- ggplot_gtable(ggplot_build(my_ggp))
+  step2 <- which(sapply(step1$grobs, function(x) x$name) == "guide-box")
+  step3 <- step1$grobs[[step2]]
+  return(step3)
+}
+shared_legend <- extract_legend(gg_legend)
+grid.arrange(arrangeGrob(p1,p2,p3,ncol=3), shared_legend,nrow = 2, heights = c(10, 1))
 ```
+In the graphs above, we plot each pixels as a single dot in the graph, but they can be merged to a large area with the same color. This means pixels from each class tend to be surrounded by the pixels from the same class. Thus, for all the dataset, we cannot treat samples or pixels as i.i.d. 
 
-```{r}
-# overlap problem. image 3 points will be ploted because they were in the last
-ggplot(data=image,aes(x=x,y=y,fill=expert_label))+
-  geom_tile()
-```
 
 ## (c)
+```{r}
+image = image %>%
+  mutate(expert_label = factor(expert_label))
+image_cor = round(cor(image[,4:11]),3)
+get_upper_tri <- function(corr){
+    corr[lower.tri(corr)]<- NA
+    return(corr)
+}
+upper_tri = get_upper_tri(image_cor)
+melted_image_corr <- melt(upper_tri, na.rm = TRUE)
 
+heatmap <- ggplot(data = melted_image_corr, aes(Var2, Var1, fill = value))+
+ geom_tile(color = "white")+
+ scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+   midpoint = 0, limit = c(-1,1), space = "Lab", 
+   name="Pearson\nCorrelation") +
+  theme_minimal()+ 
+ theme(axis.text.x = element_text(angle = 45, vjust = 1, 
+    size = 12, hjust = 1))+
+ coord_fixed()
 
+heatmap + 
+geom_text(aes(Var2, Var1, label = value), color = "black", size = 4) +
+theme(
+  axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  panel.grid.major = element_blank(),
+  panel.border = element_blank(),
+  panel.background = element_blank(),
+  axis.ticks = element_blank(),
+  legend.justification = c(1, 0),
+  legend.position = c(0.6, 0.7),
+  legend.direction = "horizontal")+
+  guides(fill = guide_colorbar(barwidth = 7, barheight = 1,
+                title.position = "top", title.hjust = 0.5))
+```
+We can draw a heatmap for the correlations between the features themselves, and the result is very interesting. NDAI, SD and CORR are positively correlated, and all the radiance variables are also positively correlated. However, radiance and other features(CORR,NDAI,SD) are negatively correlated. In addition, we find that radiance in 
 
+```{r}
+p1 = ggplot(image,aes(x=expert_label, y=NDAI))+
+  geom_boxplot()
+p2 = ggplot(image,aes(x=expert_label, y=SD))+
+  geom_boxplot()
+p3 = ggplot(image,aes(x=expert_label, y=CORR))+
+  geom_boxplot()
+p4 = ggplot(image,aes(x=expert_label, y=DF))+
+  geom_boxplot()
+p5 = ggplot(image,aes(x=expert_label, y=CF))+
+  geom_boxplot()
+p6 = ggplot(image,aes(x=expert_label, y=BF))+
+  geom_boxplot()
+p7 = ggplot(image,aes(x=expert_label, y=AF))+
+  geom_boxplot()
+p8 = ggplot(image,aes(x=expert_label, y=AN))+
+  geom_boxplot()
+```
 
-
-
-
-
+```{r,fig.width=9,fig.height=3}
+grid.arrange(p1,p2,p3,ncol=3)
+```
+By plotting the boxplots of NDAI, SD, and CORR with expert label as x-axis, we find that cloud class tends to have higher values of NDAI, SD and CORR.
+```{r,fig.width=9,fig.height=9}
+grid.arrange(p4,p5,p6,p7,p8,ncol=3)
+```
+Again, by plotting boxplots of DF, CF, BF, AF and AN with expert labels as x-axis, we find that cloud class tends to have smaller values of radiance in different angles except that in DF. For radiance angle DF, all the classes have similar distributions of radiance values, so it is hard to tell differences between cloud and no cloud classes.
 
 
 # 2 Preparation
+```{r}
+summary(image1)
+```
+
+
 
 # 3 Modeling
 
