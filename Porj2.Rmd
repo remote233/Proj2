@@ -54,7 +54,7 @@ per_combined %>% reduce(full_join, by='expert_label')
 ```
 Then, we can plot the maps of different images by x,y corrdinates values with expert labels as colors as:
 ```{r}
-myColors = c("gray37","black","white")
+myColors = c("gray40","black","white")
 p1 = ggplot(image1, aes(x, y, colour = factor(expert_label))) + 
   geom_point(show.legend = FALSE)+
   scale_color_manual(values=myColors)+
@@ -91,7 +91,7 @@ In the graphs above, we plot each pixels as a single dot in the graph, but they 
 ```{r}
 image = image %>%
   mutate(expert_label = factor(expert_label))
-image_cor = round(cor(image[,4:11]),3)
+image_cor = round(cor(image[,4:11]),2)
 get_upper_tri <- function(corr){
     corr[lower.tri(corr)]<- NA
     return(corr)
@@ -103,7 +103,7 @@ heatmap <- ggplot(data = melted_image_corr, aes(Var2, Var1, fill = value))+
  geom_tile(color = "white")+
  scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
    midpoint = 0, limit = c(-1,1), space = "Lab", 
-   name="Pearson\nCorrelation") +
+   name="Correlations") +
   theme_minimal()+ 
  theme(axis.text.x = element_text(angle = 45, vjust = 1, 
     size = 12, hjust = 1))+
@@ -124,7 +124,7 @@ theme(
   guides(fill = guide_colorbar(barwidth = 7, barheight = 1,
                 title.position = "top", title.hjust = 0.5))
 ```
-We can draw a heatmap for the correlations between the features themselves, and the result is very interesting. NDAI, SD and CORR are positively correlated, and all the radiance variables are also positively correlated. However, radiance and other features(CORR,NDAI,SD) are negatively correlated. In addition, we find that radiance in 
+Since the size of our dataset is too large and there are 7 variables to pair, it might not be a good idea to use pairs plot here. Instead, we can draw a heat map for the correlations between the features themselves, and the result is very interesting. NDAI, SD and CORR are positively correlated, and all the radiance variables are also positively correlated. However, radiance and other features(CORR,NDAI,SD) are negatively correlated. In addition, we find that radiance angle AN, AF, BF, CF are strongly correlated since their correlations are all larger than 0.75. Radiance angle DF is strongly correlated to radiance angle CF and BF, but its correlations with radiance angle AF and AN are not that strong.
 
 ```{r}
 p1 = ggplot(image,aes(x=expert_label, y=NDAI))+
@@ -149,7 +149,7 @@ p8 = ggplot(image,aes(x=expert_label, y=AN))+
 grid.arrange(p1,p2,p3,ncol=3)
 ```
 By plotting the boxplots of NDAI, SD, and CORR with expert label as x-axis, we find that cloud class tends to have higher values of NDAI, SD and CORR.
-```{r,fig.width=9,fig.height=9}
+```{r,fig.width=9,fig.height=6}
 grid.arrange(p4,p5,p6,p7,p8,ncol=3)
 ```
 Again, by plotting boxplots of DF, CF, BF, AF and AN with expert labels as x-axis, we find that cloud class tends to have smaller values of radiance in different angles except that in DF. For radiance angle DF, all the classes have similar distributions of radiance values, so it is hard to tell differences between cloud and no cloud classes.
@@ -157,7 +157,7 @@ Again, by plotting boxplots of DF, CF, BF, AF and AN with expert labels as x-axi
 
 # 2 Preparation
 ```{r}
-summary(image1)
+
 ```
 
 
@@ -167,5 +167,8 @@ summary(image1)
 # 4 Diagnostics 
 
 
+# Acknowledgement
+GridExtra to combine shared labels: https://statisticsglobe.com/add-common-legend-to-combined-ggplot2-plots-in-r/
+Heatmap for correlations: http://www.sthda.com/english/wiki/ggplot2-quick-correlation-matrix-heatmap-r-software-and-data-visualization
 
 ***
