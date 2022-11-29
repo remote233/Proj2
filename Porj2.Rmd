@@ -158,26 +158,90 @@ Again, by plotting boxplots of DF, CF, BF, AF and AN with expert labels as x-axi
 # 2 Preparation
 
 ## (a)
-When splitting the data, in order to have enough data for training, we can use the data of two pictures as our training set so that the training set takes 66.6% of the entire data. Then, we only need to split the data of one image into a validation and test set. Here, we set the ratio of the amount of data in three sets to be around 6:2:1, so validation set should take about 22.2% of the entire data and test set should take 11.1% of the entire data.
 
 ### First Splitting method
-For our first method, we want to use a direct way to split our data. We first set two images to be our training set, and split the remaining picture into three rectangles of equal size. Then, we can take two rectangles as our validation set and one as tesdt set. In this method, we need to make sure that each rectangle we split should contain data from different classes, or be diversified. After checking the three images we plotted in 1(b), we decide to use the first two images as our training set, and split the third one. In the third image, we can set thresholds values for the y-axis, and divide the image into three rectangles accroding to these thresholds values.
+For our first method, we want to use a simple and direct way to split our data. In order to have enough data for training, we can use the data of two pictures as our training set so that the training set takes 66.6% of the entire data. Then, we only need to split the data of one image into a validation and test set. Here, we set the ratio of the amount of data in three sets to be around 6:2:1, so validation set should take about 22.2% of the entire data and test set should take 11.1% of the entire data. We first set two images to be our training set, and split the remaining picture into three rectangles of equal size. Then, we can take two rectangles as our validation set and one as test set. In this method, we need to make sure that each rectangle we split should contain data from different classes, or be diversified. After checking the three images we plotted in 1(b), we decide to use the first two images as our training set, and split the third one. In the third image, we can set thresholds values for the y-axis, and divide the image into three rectangles accroding to these thresholds values.
 ```{r}
-y_max_p3 = max(image3$y)
-y_min_p3 = min(image3$y)
+image3_filtered = image3 %>% filter(expert_label!=0) %>% mutate(expert_label=factor(expert_label))
+y_max_p3 = max(image3_filtered$y)
+y_min_p3 = min(image3_filtered$y)
 lim1 = y_max_p3-(y_max_p3-y_min_p3)/3
 lim2 = y_max_p3-(y_max_p3-y_min_p3)/3*2
-p3+geom_hline(yintercept=lim1,color="red")+geom_hline(yintercept = lim2,color="red")
+ggplot(image3_filtered,aes(x,y,color=expert_label))+
+  geom_point()+
+  scale_color_manual(values=c("grey40","blue"))+
+  labs(colour="expert_label")+
+  geom_hline(yintercept=lim1,color="red")+
+  geom_hline(yintercept = lim2,color="red")
 ```
 From the plot above, we can find that our thresholds for y-axis divide the image into three rectangles containing data from different classes. We can pick the one on the top to be our test set, and the remaining two to be our validation set.
 ```{r}
-train_method1 = rbind(image1,image2)
-test_method1 = image3[image3$y>=lim1,]
-validation_method1 = image3[image3$y<lim1,]
+train_method1 = rbind(image1,image2) %>% filter(expert_label!=0) %>% mutate(expert_label=factor(expert_label))
+test_method1 = image3_filtered[image3_filtered$y>=lim1,]
+validation_method1 = image3_filtered[image3_filtered$y<lim1,]
+```
+
+### Second Method
+In the second method, we can use blocks to split the all the images and randomly select 70% blocks as our training set, 20% as validation set, and the remaining 10% as test set. We plan to divide each image into 100 blocks and then we will have totally 300 blocks. Then, we can divide those 300 blocks into train, validation, and test sets according to the ratio we set.
+```{r}
+set.seed(111)
+image1_xcut = seq(min(image1$x),max(image1$x),length=11)
+image2_xcut = seq(min(image2$x),max(image2$x),length=11)
+image3_xcut = seq(min(image3$x),max(image3$x),length=11)
+image1_ycut = seq(min(image1$y),max(image1$y),length=11)
+image2_ycut = seq(min(image2$y),max(image2$y),length=11)
+image3_ycut = seq(min(image3$y),max(image3$y),length=11)
+
+blocks = list()
+b_lab = 1
+for(i in 1:10){
+  for(j in 1:10){
+    single_block = image1 %>% filter(x>image1_xcut[i] & x<image1_xcut[i+1] & y>image1_ycut[i] & y<image1_ycut[i+1])
+    blocks[[b_lab]] = single_block
+    b_lab = b_lab+1
+  }
+}
+for(i in 1:10){
+  for(j in 1:10){
+    single_block = image2 %>% filter(x>image2_xcut[i] & x<image2_xcut[i+1] & y>image2_ycut[i] & y<image2_ycut[i+1])
+    blocks[[b_lab]] = single_block
+    b_lab = b_lab+1
+  }
+}
+for(i in 1:10){
+  for(j in 1:10){
+    single_block = image3 %>% filter(x>image3_xcut[i] & x<image3_xcut[i+1] & y>image3_ycut[i] & y<image3_ycut[i+1])
+    blocks[[b_lab]] = single_block
+    b_lab = b_lab+1
+  }
+}
+sample_indexs = 1:300
+train_index = sample(sample_indexs,size = 210,replace = FALSE)
+validation_index = sample(sample_indexs[-train_index],size=60,replace = FALSE)
+test_index = sample_indexs[-c(train_index,validation_index)]
+
+train_method2 = blocks[[train_index[1]]]
+validation_method2 = blocks[[validation_index[1]]]
+test_method2 = blocks[[test_index[1]]]
+for(i in train_index[-1]){
+  train_method2 = rbind(train_method2,blocks[[i]])
+}
+for(i in validation_index[-1]){
+  validation_method2 = rbind(validation_method2,blocks[[i]])
+}
+for(i in test_index[-1]){
+  test_method2 = rbind(test_method2,blocks[[i]])
+}
+train_method2 = train_method2%>%filter(expert_label!=0)%>%mutate(expert_label=factor(expert_label))
+test_method2 = test_method2%>%filter(expert_label!=0)%>%mutate(expert_label=factor(expert_label))
+validation_method2 = validation_method2%>%filter(expert_label!=0)%>%mutate(expert_label=factor(expert_label))
 ```
 
 
-### Second Method
+## (b)
+```{r}
+
+```
 
 
 
