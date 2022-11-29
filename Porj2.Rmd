@@ -239,11 +239,19 @@ validation_method2 = validation_method2%>%filter(expert_label!=0)%>%mutate(exper
 
 
 ## (b)
+The accuracy of the trivial classifier on the validation and test set of two methods is:
 ```{r}
-
+# accuracy of method1
+accuracy = matrix(NA,nrow=2,ncol=2,dimnames=list(c("validation","test"),c("method1","method2")))
+accuracy[1,1] = sum(validation_method1$expert_label==-1)/nrow(validation_method1)
+accuracy[1,2] = sum(validation_method2$expert_label==-1)/nrow(validation_method2)
+accuracy[2,1] = sum(test_method1$expert_label==-1)/nrow(test_method1)
+accuracy[2,2] = sum(test_method2$expert_label==-1)/nrow(test_method2)
+accuracy
 ```
+This kind of trivial classifier will have high accuracy when a dataset consist almost entirely of cloud-free class. On the table above, we can find that the trivial classifier does not perform well on most of the sets. For the validation set of our method1, since cloud-free class occupies a large proportion of the data, the accuracy of trivial classifier is pretty high compared with other sets, but the accuracy is still only around 0.7. Therefore, we would say our classification problem is not trivial.
 
-
+## (c)
 
 
 # 3 Modeling
