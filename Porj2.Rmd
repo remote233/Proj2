@@ -12,6 +12,8 @@ library(ggplot2)
 library(gridExtra)
 library(GGally)
 library(reshape2)
+
+library(dplyr)
 ```
 
 ***
@@ -160,7 +162,7 @@ Again, by plotting boxplots of DF, CF, BF, AF and AN with expert labels as x-axi
 ## (a)
 
 ### First Splitting method
-For our first method, we want to use a simple and direct way to split our data. In order to have enough data for training, we can use the data of two pictures as our training set so that the training set takes 66.6% of the entire data. Then, we only need to split the data of one image into a validation and test set. Here, we set the ratio of the amount of data in three sets to be around 6:2:1, so validation set should take about 22.2% of the entire data and test set should take 11.1% of the entire data. We first set two images to be our training set, and split the remaining picture into three rectangles of equal size. Then, we can take two rectangles as our validation set and one as test set. In this method, we need to make sure that each rectangle we split should contain data from different classes, or be diversified. After checking the three images we plotted in 1(b), we decide to use the first two images as our training set, and split the third one. In the third image, we can set thresholds values for the y-axis, and divide the image into three rectangles accroding to these thresholds values.
+For our first method, we want to use a simple and direct way to split our data. In order to have enough data for training, we can use the data of two pictures as our training set so that the training set takes 66.6% of the entire data. Then, we only need to split the data of image3 into a validation and test set. Here, we set the ratio of the amount of data in three sets to be around 6:2:1, so validation set should take about 22.2% of the entire data and test set should take 11.1% of the entire data. We first set two images to be our training set, and split the remaining picture into three rectangles of equal size. Then, we can take two rectangles as our validation set and one as test set. In this method, we need to make sure that each rectangle we split should contain data from different classes, or be diversified. After checking the three images we plotted in 1(b), we decide to use the first two images as our training set, and split the third one. In the third image, we can set thresholds values for the y-axis, and divide the image into three rectangles accroding to these thresholds values.
 ```{r}
 image3_filtered = image3 %>% filter(expert_label!=0) %>% mutate(expert_label=factor(expert_label))
 y_max_p3 = max(image3_filtered$y)
@@ -252,8 +254,153 @@ accuracy
 This kind of trivial classifier will have high accuracy when a dataset consist almost entirely of cloud-free class. On the table above, we can find that the trivial classifier does not perform well on most of the sets. For the validation set of our method1, since cloud-free class occupies a large proportion of the data, the accuracy of trivial classifier is pretty high compared with other sets, but the accuracy is still only around 0.7. Therefore, we would say our classification problem is not trivial.
 
 ## (c)
+In order to determine 3 best features out of 8 features, we decided to use each feature to build a single-predictor logistics regression model based on training data set from both split method1 and split method2, and use the validation data set from from both split method1 and split method2 to draw the ROC curve.
+We will get two area under the ROC curve (AUC) values, and make them equal weighted to get the average AUC value to evaluate the overall performance of each model. 
+An ideal ROC curve will huge the top left corner, so the larger the average AUC value the best the classifier, we will choose three features with the first three largest average AUC value as the best three features in this problem.
+```{r}
+# change expert_label's not cloudy label from -1 to 0
+temp_train_method1=train_method1 %>% 
+   mutate(expert_label = ifelse(expert_label == -1,0,1))
+
+temp_train_method2=train_method2 %>%
+  mutate(expert_label = ifelse(expert_label == -1,0,1))
+
+temp_validation_method1=validation_method1 %>%
+  mutate(expert_label = ifelse(expert_label == -1,0,1))
+
+temp_validation_method2=validation_method2 %>%
+  mutate(expert_label = ifelse(expert_label == -1,0,1))
+```
+
+```{r}
+logm1_1=glm(expert_label~NDAI,data=temp_train_method1,family = "binomial")
+logm1_2=glm(expert_label~SD,data=temp_train_method1,family = "binomial")
+logm1_3=glm(expert_label~CORR,data=temp_train_method1,family = "binomial")
+logm1_4=glm(expert_label~DF,data=temp_train_method1,family = "binomial")
+logm1_5=glm(expert_label~CF,data=temp_train_method1,family = "binomial")
+logm1_6=glm(expert_label~BF,data=temp_train_method1,family = "binomial")
+logm1_7=glm(expert_label~AF,data=temp_train_method1,family = "binomial")
+logm1_8=glm(expert_label~AN,data=temp_train_method1,family = "binomial")
+```
+
+```{r}
+library(ROCR)
+m1_auc=c()
+```
+
+```{r}
+prob=predict(logm1_1,temp_validation_method1,type='response')
+m1_auc[1]=auc(temp_validation_method1$expert_label, prob)
+prob=predict(logm1_2,temp_validation_method1,type='response')
+m1_auc[2]=auc(temp_validation_method1$expert_label, prob)
+
+prob=predict(logm1_3,temp_validation_method1,type='response')
+m1_auc[3]=auc(temp_validation_method1$expert_label, prob)
+prob=predict(logm1_4,temp_validation_method1,type='response')
+m1_auc[4]=auc(temp_validation_method1$expert_label, prob)
+
+prob=predict(logm1_5,temp_validation_method1,type='response')
+m1_auc[5]=auc(temp_validation_method1$expert_label, prob)
+prob=predict(logm1_6,temp_validation_method1,type='response')
+m1_auc[6]=auc(temp_validation_method1$expert_label, prob)
+
+prob=predict(logm1_7,temp_validation_method1,type='response')
+m1_auc[7]=auc(temp_validation_method1$expert_label, prob)
+prob=predict(logm1_8,temp_validation_method1,type='response')
+m1_auc[8]=auc(temp_validation_method1$expert_label, prob)
+```
+
+```{r}
+library(gridExtra)
+par(mfrow=c(2,4))
+p1=ggplot(train_method1,aes(x=NDAI,fill=expert_label))+
+  geom_density(alpha=0.5)
+p2=ggplot(train_method1,aes(x=SD,fill=expert_label))+
+  geom_density(alpha=0.5)
+p3=ggplot(train_method1,aes(x=CORR,fill=expert_label))+
+  geom_density(alpha=0.5)
+p4=ggplot(train_method1,aes(x=DF,fill=expert_label))+
+  geom_density(alpha=0.5)
+p5=ggplot(train_method1,aes(x=CF,fill=expert_label))+
+  geom_density(alpha=0.5)
+p6=ggplot(train_method1,aes(x=BF,fill=expert_label))+
+  geom_density(alpha=0.5)
+p7=ggplot(train_method1,aes(x=AF,fill=expert_label))+
+  geom_density(alpha=0.5)
+p8=ggplot(train_method1,aes(x=AN,fill=expert_label))+
+  geom_density(alpha=0.5)
+grid.arrange(p1,p2,p3,p4,p5,p6,p7,p8,ncol=2)
+```
+
+```{r}
+logm2_1=glm(expert_label~NDAI,data=temp_train_method2,family = "binomial")
+logm2_2=glm(expert_label~SD,data=temp_train_method2,family = "binomial")
+logm2_3=glm(expert_label~CORR,data=temp_train_method2,family = "binomial")
+logm2_4=glm(expert_label~DF,data=temp_train_method2,family = "binomial")
+logm2_5=glm(expert_label~CF,data=temp_train_method2,family = "binomial")
+logm2_6=glm(expert_label~BF,data=temp_train_method2,family = "binomial")
+logm2_7=glm(expert_label~AF,data=temp_train_method2,family = "binomial")
+logm2_8=glm(expert_label~AN,data=temp_train_method2,family = "binomial")
+```
+
+```{r}
+library(ROCR)
+m2_auc=c()
+prob=predict(logm2_1,temp_validation_method2,type='response')
+m2_auc[1]=auc(temp_validation_method2$expert_label, prob)
+prob=predict(logm2_2,temp_validation_method2,type='response')
+m2_auc[2]=auc(temp_validation_method2$expert_label, prob)
+
+prob=predict(logm2_3,temp_validation_method2,type='response')
+m2_auc[3]=auc(temp_validation_method2$expert_label, prob)
+prob=predict(logm2_4,temp_validation_method2,type='response')
+m2_auc[4]=auc(temp_validation_method2$expert_label, prob)
+
+prob=predict(logm2_5,temp_validation_method2,type='response')
+m2_auc[5]=auc(temp_validation_method2$expert_label, prob)
+prob=predict(logm2_6,temp_validation_method2,type='response')
+m2_auc[6]=auc(temp_validation_method2$expert_label, prob)
+
+prob=predict(logm2_7,temp_validation_method2,type='response')
+m2_auc[7]=auc(temp_validation_method2$expert_label, prob)
+prob=predict(logm2_8,temp_validation_method2,type='response')
+m2_auc[8]=auc(temp_validation_method2$expert_label, prob)
+```
+
+```{r}
+library(gridExtra)
+par(mfrow=c(2,4))
+p1=ggplot(train_method2,aes(x=NDAI,fill=expert_label))+
+  geom_density(alpha=0.5)
+p2=ggplot(train_method2,aes(x=SD,fill=expert_label))+
+  geom_density(alpha=0.5)
+p3=ggplot(train_method2,aes(x=CORR,fill=expert_label))+
+  geom_density(alpha=0.5)
+p4=ggplot(train_method2,aes(x=DF,fill=expert_label))+
+  geom_density(alpha=0.5)
+p5=ggplot(train_method2,aes(x=CF,fill=expert_label))+
+  geom_density(alpha=0.5)
+p6=ggplot(train_method2,aes(x=BF,fill=expert_label))+
+  geom_density(alpha=0.5)
+p7=ggplot(train_method2,aes(x=AF,fill=expert_label))+
+  geom_density(alpha=0.5)
+p8=ggplot(train_method2,aes(x=AN,fill=expert_label))+
+  geom_density(alpha=0.5)
+grid.arrange(p1,p2,p3,p4,p5,p6,p7,p8,ncol=2)
+```
 
 
+```{r}
+avg_auc=(m1_auc+m2_auc)/2
+```
+
+```{r}
+tab <- matrix(c(m1_auc,m2_auc,avg_auc), ncol=3)
+colnames(tab) <- c('m1_auc','m2_auc','avg_auc')
+rownames(tab) <- c("NDAI","SD","CORR","DF","CF","BF","AF","AN")
+tab=as.table(tab)
+tab
+```
 # 3 Modeling
 
 # 4 Diagnostics 
