@@ -12,8 +12,11 @@ library(ggplot2)
 library(gridExtra)
 library(GGally)
 library(reshape2)
-
+library(ROCR)
+library(cvAUC)
 library(dplyr)
+library(pROC)
+library(randomForest)
 ```
 
 ***
@@ -254,9 +257,10 @@ accuracy
 This kind of trivial classifier will have high accuracy when a dataset consist almost entirely of cloud-free class. On the table above, we can find that the trivial classifier does not perform well on most of the sets. For the validation set of our method1, since cloud-free class occupies a large proportion of the data, the accuracy of trivial classifier is pretty high compared with other sets, but the accuracy is still only around 0.7. Therefore, we would say our classification problem is not trivial.
 
 ## (c)
-In order to determine 3 best features out of 8 features, we decided to use each feature to build a single-predictor logistics regression model based on training data set from both split method1 and split method2, and use the validation data set from from both split method1 and split method2 to draw the ROC curve.
-We will get two area under the ROC curve (AUC) values, and make them equal weighted to get the average AUC value to evaluate the overall performance of each model. 
-An ideal ROC curve will huge the top left corner, so the larger the average AUC value the best the classifier, we will choose three features with the first three largest average AUC value as the best three features in this problem.
+In order to determine 3 best features out of 8 features, we firstly used random forest to find and plot the importance of each feature based on train sets of both methods. We found that NDAI, SD and CORR were the features having the greatest importance in both plots. Then, we decided to use each feature to build a single-predictor logistics regression model based on training data set from both methods, and use the validation data sets from both methods to draw the ROC curve.
+We got two area under the ROC curve (AUC) values, and made them equal weighted to get the average AUC value to evaluate the overall performance of each model. 
+An ideal ROC curve will have huge top left corner, so the larger the average AUC value the better the classifier. Again, NDAI, SD and CORR had the largest average AUC values. So, combined with the result of random forest, we decided to use NDAI, SD, and CORR as our three "best" features. Among them, NDAI performed the best in both random forest and ROC curves, so it should be the most useful variable for our classification.
+
 ```{r}
 # change expert_label's not cloudy label from -1 to 0
 temp_train_method1=train_method1 %>% 
@@ -273,6 +277,13 @@ temp_validation_method2=validation_method2 %>%
 ```
 
 ```{r}
+cloud_RF1 = randomForest(as.factor(expert_label)~NDAI+SD+CORR+AF+BF+CF+DF+AN,data=temp_train_method1,ntree=100)
+cloud_RF2 = randomForest(as.factor(expert_label)~NDAI+SD+CORR+AF+BF+CF+DF+AN,data=temp_train_method2,ntree=100)
+varImpPlot(cloud_RF1)
+varImpPlot(cloud_RF2)
+```
+
+```{r}
 logm1_1=glm(expert_label~NDAI,data=temp_train_method1,family = "binomial")
 logm1_2=glm(expert_label~SD,data=temp_train_method1,family = "binomial")
 logm1_3=glm(expert_label~CORR,data=temp_train_method1,family = "binomial")
@@ -282,13 +293,8 @@ logm1_6=glm(expert_label~BF,data=temp_train_method1,family = "binomial")
 logm1_7=glm(expert_label~AF,data=temp_train_method1,family = "binomial")
 logm1_8=glm(expert_label~AN,data=temp_train_method1,family = "binomial")
 ```
-
 ```{r}
-library(ROCR)
 m1_auc=c()
-```
-
-```{r}
 prob=predict(logm1_1,temp_validation_method1,type='response')
 m1_auc[1]=auc(temp_validation_method1$expert_label, prob)
 prob=predict(logm1_2,temp_validation_method1,type='response')
@@ -311,28 +317,6 @@ m1_auc[8]=auc(temp_validation_method1$expert_label, prob)
 ```
 
 ```{r}
-library(gridExtra)
-par(mfrow=c(2,4))
-p1=ggplot(train_method1,aes(x=NDAI,fill=expert_label))+
-  geom_density(alpha=0.5)
-p2=ggplot(train_method1,aes(x=SD,fill=expert_label))+
-  geom_density(alpha=0.5)
-p3=ggplot(train_method1,aes(x=CORR,fill=expert_label))+
-  geom_density(alpha=0.5)
-p4=ggplot(train_method1,aes(x=DF,fill=expert_label))+
-  geom_density(alpha=0.5)
-p5=ggplot(train_method1,aes(x=CF,fill=expert_label))+
-  geom_density(alpha=0.5)
-p6=ggplot(train_method1,aes(x=BF,fill=expert_label))+
-  geom_density(alpha=0.5)
-p7=ggplot(train_method1,aes(x=AF,fill=expert_label))+
-  geom_density(alpha=0.5)
-p8=ggplot(train_method1,aes(x=AN,fill=expert_label))+
-  geom_density(alpha=0.5)
-grid.arrange(p1,p2,p3,p4,p5,p6,p7,p8,ncol=2)
-```
-
-```{r}
 logm2_1=glm(expert_label~NDAI,data=temp_train_method2,family = "binomial")
 logm2_2=glm(expert_label~SD,data=temp_train_method2,family = "binomial")
 logm2_3=glm(expert_label~CORR,data=temp_train_method2,family = "binomial")
@@ -342,7 +326,6 @@ logm2_6=glm(expert_label~BF,data=temp_train_method2,family = "binomial")
 logm2_7=glm(expert_label~AF,data=temp_train_method2,family = "binomial")
 logm2_8=glm(expert_label~AN,data=temp_train_method2,family = "binomial")
 ```
-
 ```{r}
 library(ROCR)
 m2_auc=c()
@@ -368,39 +351,17 @@ m2_auc[8]=auc(temp_validation_method2$expert_label, prob)
 ```
 
 ```{r}
-library(gridExtra)
-par(mfrow=c(2,4))
-p1=ggplot(train_method2,aes(x=NDAI,fill=expert_label))+
-  geom_density(alpha=0.5)
-p2=ggplot(train_method2,aes(x=SD,fill=expert_label))+
-  geom_density(alpha=0.5)
-p3=ggplot(train_method2,aes(x=CORR,fill=expert_label))+
-  geom_density(alpha=0.5)
-p4=ggplot(train_method2,aes(x=DF,fill=expert_label))+
-  geom_density(alpha=0.5)
-p5=ggplot(train_method2,aes(x=CF,fill=expert_label))+
-  geom_density(alpha=0.5)
-p6=ggplot(train_method2,aes(x=BF,fill=expert_label))+
-  geom_density(alpha=0.5)
-p7=ggplot(train_method2,aes(x=AF,fill=expert_label))+
-  geom_density(alpha=0.5)
-p8=ggplot(train_method2,aes(x=AN,fill=expert_label))+
-  geom_density(alpha=0.5)
-grid.arrange(p1,p2,p3,p4,p5,p6,p7,p8,ncol=2)
-```
-
-
-```{r}
 avg_auc=(m1_auc+m2_auc)/2
-```
-
-```{r}
-tab <- matrix(c(m1_auc,m2_auc,avg_auc), ncol=3)
+rounded_AUC = round(c(m1_auc,m2_auc,avg_auc),3)
+tab <- matrix(rounded_AUC, ncol=3)
 colnames(tab) <- c('m1_auc','m2_auc','avg_auc')
 rownames(tab) <- c("NDAI","SD","CORR","DF","CF","BF","AF","AN")
-tab=as.table(tab)
+tab=as.table(tab[order(tab[,3],decreasing = T),])
 tab
 ```
+
+
+
 # 3 Modeling
 
 # 4 Diagnostics 
