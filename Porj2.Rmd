@@ -7,6 +7,7 @@ output: pdf_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+source("CVmaster.R", local = knitr::knit_global())
 library(tidyverse)
 library(ggplot2)
 library(gridExtra)
@@ -360,9 +361,24 @@ tab=as.table(tab[order(tab[,3],decreasing = T),])
 tab
 ```
 
-
-
 # 3 Modeling
+## (a)
+We decide to try classification methods including logistic regression, SVM, naive Bayes, LDA and QDA.
+```{r}
+loss_function <- function(pred_result){
+  pred_result %>%
+    mutate(accuracy = ifelse(pred==obs,1,0))%>%
+    group_by(Resample) %>%
+    summarise(Accuracy = round(mean(accuracy),3))
+}
+train_CV_1 = rbind(train_method1, validation_method1) %>%
+  mutate(expert_label = ifelse(expert_label==-1,0,1))
+train_feature1 = train_CV_1 %>% select(NDAI,SD,CORR)
+train_label1 = train_CV_1 %>% select(expert_label)
+set.seed(12345)
+CVmaster("lda",train_feature1,train_label1,K=10,loss_function)
+```
+
 
 # 4 Diagnostics 
 
