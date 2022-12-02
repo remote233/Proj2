@@ -177,8 +177,7 @@ ggplot(image3_filtered,aes(x,y,color=expert_label))+
   geom_point()+
   scale_color_manual(values=c("grey40","blue"))+
   labs(colour="expert_label")+
-  geom_hline(yintercept=lim1,color="red")+
-  geom_hline(yintercept = lim2,color="red")
+  geom_hline(yintercept=c(lim1,lim2),color="red")
 ```
 From the plot above, we can find that our thresholds for y-axis divide the image into three rectangles containing data from different classes. We can pick the one on the top to be our test set, and the remaining two to be our validation set.
 ```{r}
@@ -188,7 +187,7 @@ validation_method1 = image3_filtered[image3_filtered$y<lim1,]
 ```
 
 ### Second Method
-In the second method, we can use blocks to split the all the images and randomly select 70% blocks as our training set, 20% as validation set, and the remaining 10% as test set. We plan to divide each image into 100 blocks and then we will have totally 300 blocks. Then, we can divide those 300 blocks into train, validation, and test sets according to the ratio we set.
+In the second method, we can use blocks to split the all the images and randomly select 70% blocks as our training set, 20% as validation set, and the remaining 10% as test set. We plan to divide each image into 100 blocks and then we will have totally 300 blocks. Then, we can divide those 300 blocks into train, validation, and test sets according to the ratio we set. For both methods, we will delete unlabeled pixels after splitting the data because they are not useful for our classification.
 ```{r}
 set.seed(111)
 image1_xcut = seq(min(image1$x),max(image1$x),length=11)
@@ -202,26 +201,26 @@ blocks = list()
 b_lab = 1
 for(i in 1:10){
   for(j in 1:10){
-    single_block = image1 %>% filter(x>image1_xcut[i] & x<image1_xcut[i+1] & y>image1_ycut[i] & y<image1_ycut[i+1])
+    single_block = image1 %>% filter(x>image1_xcut[i] & x<image1_xcut[i+1] & y>image1_ycut[i] & y<image1_ycut[i+1]) %>% mutate(blocks=b_lab)
     blocks[[b_lab]] = single_block
     b_lab = b_lab+1
   }
 }
 for(i in 1:10){
   for(j in 1:10){
-    single_block = image2 %>% filter(x>image2_xcut[i] & x<image2_xcut[i+1] & y>image2_ycut[i] & y<image2_ycut[i+1])
+    single_block = image2 %>% filter(x>image2_xcut[i] & x<image2_xcut[i+1] & y>image2_ycut[i] & y<image2_ycut[i+1]) %>% mutate(blocks=b_lab)
     blocks[[b_lab]] = single_block
     b_lab = b_lab+1
   }
 }
 for(i in 1:10){
   for(j in 1:10){
-    single_block = image3 %>% filter(x>image3_xcut[i] & x<image3_xcut[i+1] & y>image3_ycut[i] & y<image3_ycut[i+1])
+    single_block = image3 %>% filter(x>image3_xcut[i] & x<image3_xcut[i+1] & y>image3_ycut[i] & y<image3_ycut[i+1]) %>% mutate(blocks=b_lab)
     blocks[[b_lab]] = single_block
     b_lab = b_lab+1
   }
 }
-sample_indexs = 1:300
+sample_indexs = 1:300 
 train_index = sample(sample_indexs,size = 210,replace = FALSE)
 validation_index = sample(sample_indexs[-train_index],size=60,replace = FALSE)
 test_index = sample_indexs[-c(train_index,validation_index)]
@@ -362,22 +361,55 @@ tab
 ```
 
 # 3 Modeling
+
 ## (a)
-We decide to try classification methods including logistic regression, SVM, naive Bayes, LDA and QDA.
-```{r}
-loss_function <- function(pred_result){
-  pred_result %>%
-    mutate(accuracy = ifelse(pred==obs,1,0))%>%
-    group_by(Resample) %>%
-    summarise(Accuracy = round(mean(accuracy),3))
-}
-train_CV_1 = rbind(train_method1, validation_method1) %>%
-  mutate(expert_label = ifelse(expert_label==-1,0,1))
-train_feature1 = train_CV_1 %>% select(NDAI,SD,CORR)
-train_label1 = train_CV_1 %>% select(expert_label)
-set.seed(12345)
-CVmaster("lda",train_feature1,train_label1,K=10,loss_function)
+
+### How to create folds.
+Firstly, we need to divide our datasets into k-folds. Let assume we would like to divide 10 folds. Due to the spatial dependency, we cannot randomly assign each pixel to a fold. Therefore, for the dataset we got by method1, we could divide the combination of training and validation data into 10 blocks by their x-axis values as below. We would combine the data of each column and make it as a fold. Then, by this method, we got 10 folds for our training and validation data from method1.
+```{r,fig.width=8,fig.height=3}
+cut1 = seq(min(image1$x),max(image1$x),length=11)[-c(1,11)]
+cut2 = seq(min(image2$x),max(image2$x),length=11)[-c(1,11)]
+cut3 = seq(min(image3$x),max(image3$x),length=11)[-c(1,11)]
+cut_p1 = image1 %>% 
+  filter(expert_label!=0) %>%
+  mutate(expert_label=as.factor(expert_label))%>%
+  ggplot(.,aes(x,y,color=expert_label))+
+  geom_point(show.legend = FALSE)+
+  geom_vline(xintercept = cut1, color="red")
+cut_p2 = image2 %>% 
+  filter(expert_label!=0) %>%
+  mutate(expert_label=as.factor(expert_label))%>%
+  ggplot(.,aes(x,y,color=expert_label))+
+  geom_point(show.legend = FALSE)+
+  geom_vline(xintercept = cut2, color="red")
+cut_p3 = ggplot(validation_method1,aes(x,y,color=expert_label))+
+  geom_point(show.legend = FALSE)+
+  geom_vline(xintercept = cut2, color="red")
+gg_legend <- ggplot(validation_method1,aes(x,y,color=expert_label)) + 
+  geom_point()+
+  theme(legend.position = "bottom")
+shared_legend <- extract_legend(gg_legend)
+grid.arrange(arrangeGrob(cut_p1,cut_p2,cut_p3,ncol=3), shared_legend,nrow = 2, heights = c(10, 1))
 ```
+Then, for the training and validation data from method2, we could extract the index of the blocks in our data first. For some blocks, since they do not contain any labeled pixel, they might already be deleted, so we may not have 270 blocks as we expected.After we . Therefore, we could get 10 folds as well. In order to make it more convenient for us to calculate, we should divide the fold for our training data before we use the CVmaster and give a fold number to each pixel in the training data.
+
+### CVV accuracy
+
+
+```{r}
+#split folds for data from method2
+train_cv = rbind(train_method2,validation_method2,test_method2)
+train_cv$new_blocks <- match(train_cv$blocks, unique(train_cv$blocks))
+# number of folds
+K=10
+train_cv = train_cv %>% mutate(folds = new_blocks%%K+1, expert_label = ifelse(expert_label==-1,0,1))
+train_feature = train_cv %>% dplyr::select(NDAI,SD,CORR)
+train_label = train_cv %>% dplyr::select(expert_label)
+train_folds = train_cv %>% dplyr::select(folds)
+#try different models here
+CVmaster(lr_model, train_feature, train_label, train_folds)
+```
+
 
 
 # 4 Diagnostics 
