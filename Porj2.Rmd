@@ -395,19 +395,150 @@ Then, for the training and validation data from method2, we could extract the in
 
 ### CVV accuracy
 
+```{r}
+#split folds for data from method1
+image1_split = image1 %>% mutate(folds = as.integer((x-min(x)-1)/(max(x)-min(x))*10)+1)
+image2_split = image2 %>% mutate(folds = as.integer((x-min(x)-1)/(max(x)-min(x))*10)+1)
+image3_split = validation_method1 %>% mutate(folds = as.integer((x-min(x)-1)/(max(x)-min(x))*10)+1)
+train_cv1 = rbind(image1_split,image2_split,image3_split)
+train_cv1 = train_cv1 %>% 
+  filter(expert_label!=0)%>%
+  mutate(expert_label = ifelse(expert_label==-1,0,1)) %>%
+  mutate_at(c("NDAI", "SD", "CORR"), ~(scale(.) %>% as.vector))
+# scale features and select inputs
+train_feature1 = train_cv1 %>% dplyr::select(NDAI,SD,CORR)
+train_label1 = train_cv1 %>% dplyr::select(expert_label)
+train_folds1 = train_cv1 %>% dplyr::select(folds)
+```
 
 ```{r}
 #split folds for data from method2
-train_cv = rbind(train_method2,validation_method2,test_method2)
-train_cv$new_blocks <- match(train_cv$blocks, unique(train_cv$blocks))
+train_cv2 = rbind(train_method2,validation_method2)
+train_cv2$new_blocks <- match(train_cv2$blocks, unique(train_cv2$blocks))
 # number of folds
 K=10
-train_cv = train_cv %>% mutate(folds = new_blocks%%K+1, expert_label = ifelse(expert_label==-1,0,1))
-train_feature = train_cv %>% dplyr::select(NDAI,SD,CORR)
-train_label = train_cv %>% dplyr::select(expert_label)
-train_folds = train_cv %>% dplyr::select(folds)
+train_cv2 = train_cv2 %>% 
+  mutate(folds = new_blocks%%K+1, expert_label = ifelse(expert_label==-1,0,1)) %>% 
+  mutate_at(c("NDAI", "SD", "CORR"), ~(scale(.) %>% as.vector))
+# scale the features
+train_feature2 = train_cv2 %>% dplyr::select(NDAI,SD,CORR)
+train_label2 = train_cv2 %>% dplyr::select(expert_label)
+train_folds2 = train_cv2 %>% dplyr::select(folds)
+```
+
+```{r}
 #try different models here
-CVmaster(lr_model, train_feature, train_label, train_folds)
+source("CVmaster.R", local = knitr::knit_global())
+lr_result1 <- CVmaster(lr_model, train_feature1, train_label1, train_folds1)
+nb_result1 <- CVmaster(nb_model, train_feature1, train_label1, train_folds1)
+lda_result1 <- CVmaster(lda_model, train_feature1, train_label1, train_folds1)
+qda_result1 <- CVmaster(qda_model, train_feature1, train_label1, train_folds1)
+knn_result1 <- CVmaster(knn_model, train_feature1, train_label1, train_folds1)
+xgb_result1 <- CVmaster(XGBoost_model, train_feature1, train_label1, train_folds1)
+
+lr_result2 <- CVmaster(lr_model, train_feature2, train_label2, train_folds2)
+nb_result2 <- CVmaster(nb_model, train_feature2, train_label2, train_folds2)
+lda_result2 <- CVmaster(lda_model, train_feature2, train_label2, train_folds2)
+qda_result2 <- CVmaster(qda_model, train_feature2, train_label2, train_folds2)
+knn_result2 <- CVmaster(knn_model, train_feature2, train_label2, train_folds2)
+xgb_result2 <- CVmaster(XGBoost_model, train_feature2, train_label2, train_folds2)
+```
+
+```{r}
+# accuracy table for both datasets with different models
+result_list1 <- list(lr_result1, nb_result1, lda_result1, qda_result1, knn_result1, xgb_result1)
+result_table1 <- result_list1 %>% reduce(full_join, by='folds')
+print(result_table1)
+
+result_list2 <- list(lr_result2, nb_result2, lda_result2, qda_result2, knn_result2, xgb_result2)
+result_table2 <- result_list2 %>% reduce(full_join, by="folds")
+print(result_table2)
+```
+```{r}
+# test accuracy
+test1 <- test_method1 %>% 
+  mutate(expert_label=ifelse(expert_label==-1,0,1)) %>%
+  mutate_at(c("NDAI", "SD", "CORR"), ~(scale(.) %>% as.vector))
+test2 <- test_method2 %>% 
+  mutate(expert_label=ifelse(expert_label==-1,0,1)) %>%
+  mutate_at(c("NDAI", "SD", "CORR"), ~(scale(.) %>% as.vector))
+train1 <- rbind(train_method1,validation_method1) %>%
+  mutate(expert_label=ifelse(expert_label==-1,0,1)) %>%
+  mutate_at(c("NDAI", "SD", "CORR"), ~(scale(.) %>% as.vector))
+train2 <- rbind(train_method2,validation_method2) %>% 
+  mutate(expert_label=ifelse(expert_label==-1,0,1)) %>%
+  mutate_at(c("NDAI", "SD", "CORR"), ~(scale(.) %>% as.vector))
+test_accuracy <- matrix(NA,ncol=2,nrow=6)
+rownames(test_accuracy) <- c("Logistic Regression", "Naive Bayes", "QDA", "LDA", "KNN", "XGBoost")
+colnames(test_accuracy) <- c("split method1", "split method2")
+form <- formula("expert_label ~ NDAI+SD+CORR")
+
+# Logistic Regression
+lr_mod1 <- glm(form, data=train1,family = "binomial")
+lr_pred1 <- predict(lr_mod1, test1, type="response")
+pred = rep(0,length(lr_pred1))
+pred[lr_pred1>0.5] = 1
+test_accuracy[1,1] <- round(mean(pred==test1$expert_label),3)
+lr_mod2 <- glm(form, data=train2,family = "binomial")
+lr_pred2 <- predict(lr_mod2, test2, type="response")
+pred = rep(0,length(lr_pred2))
+pred[lr_pred2>0.5] = 1
+test_accuracy[1,2] <- round(mean(pred==test2$expert_label),3)
+
+# Naive Bayes
+nb_mod1 <- naiveBayes(form, data=train1)
+pred = predict(nb_mod1, test1)
+test_accuracy[2,1] = round(mean(pred==test1$expert_label),3)
+nb_mod2 <- naiveBayes(form, data=train2)
+pred = predict(nb_mod2, test2)
+test_accuracy[2,2] = round(mean(pred==test2$expert_label),3)
+
+# QDA
+qda_mod1 <- qda(form, data=train1)
+pred = predict(qda_mod1, test1)
+test_accuracy[3,1] = round(mean(pred$class==test1$expert_label),3)
+qda_mod2 <- qda(form, data=train2)
+pred = predict(qda_mod2, test2)
+test_accuracy[3,2] = round(mean(pred$class==test2$expert_label),3)
+
+# LDA
+lda_mod1 <- lda(form, data=train1)
+pred = predict(lda_mod1, test1)
+test_accuracy[4,1] = round(mean(pred$class==test1$expert_label),3)
+lda_mod2 <- lda(form, data=train2)
+pred = predict(lda_mod2, test2)
+test_accuracy[4,2] = round(mean(pred$class==test2$expert_label),3)
+
+# KNN
+knn_mod1 <- knn(train1[,c("NDAI","SD","CORR")], test1[,c("NDAI","SD","CORR")], train1$expert_label, k=20)
+test_accuracy[5,1] <- round(mean(knn_mod1==test1$expert_label),3)
+knn_mod2 <- knn(train2[,c("NDAI","SD","CORR")], test2[,c("NDAI","SD","CORR")], train2$expert_label, k=20)
+test_accuracy[5,2] <- round(mean(knn_mod2==test2$expert_label),3)
+
+# XGBoost
+xgb_train = xgb.DMatrix(data = data.matrix(train1[,c("NDAI","SD","CORR")]), label = train1$expert_label)
+xgb_test = xgb.DMatrix(data = data.matrix(test1[,c("NDAI","SD","CORR")]), label = test1$expert_label)
+watchlist = list(train=xgb_train, test=xgb_test)
+model = xgb.train(data = xgb_train, max.depth = 3, watchlist=watchlist, nrounds = 1000, verbose = 0)
+final_rounds = as.integer(model$evaluation_log[which.min(test_rmse),1])
+train_xgb1 = xgboost(data = xgb_train, max.depth = 3, nrounds = final_rounds, verbose = 0)
+pred_prob = predict(train_xgb1, xgb_test)
+pred = rep(0,length(pred_prob))
+pred[pred_prob>0.5] = 1
+test_accuracy[6,1] <- round(mean(pred==test1$expert_label),3)
+
+xgb_train = xgb.DMatrix(data = data.matrix(train2[,c("NDAI","SD","CORR")]), label = train2$expert_label)
+xgb_test = xgb.DMatrix(data = data.matrix(test2[,c("NDAI","SD","CORR")]), label = test2$expert_label)
+watchlist = list(train=xgb_train, test=xgb_test)
+model = xgb.train(data = xgb_train, max.depth = 3, watchlist=watchlist, nrounds = 1000, verbose = 0)
+final_rounds = as.integer(model$evaluation_log[which.min(test_rmse),1])
+train_xgb2 = xgboost(data = xgb_train, max.depth = 3, nrounds = final_rounds, verbose = 0)
+pred_prob = predict(train_xgb2, xgb_test)
+pred = rep(0,length(pred_prob))
+pred[pred_prob>0.5] = 1
+test_accuracy[6,2] <- round(mean(pred==test2$expert_label),3)
+
+test_accuracy
 ```
 
 
