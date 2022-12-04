@@ -643,9 +643,24 @@ for(i in 1:99){
   TPR6[i]=table[2,2]/(table[2,1]+table[2,2])
 }
 ```
+
+
 ```{r}
 df=data.frame(FPR=c(FPR1,FPR2,FPR3,FPR4,FPR6),TPR=c(TPR1,TPR2,TPR3,TPR4,TPR6),method=rep(c("logistic_reg","naive_bayes","QDA","LDA","XGBoost"),each=99))
 ggplot(data = df, aes(x=FPR, y=TPR)) + geom_line(aes(colour=method))
+```
+```{r}
+library(e1071)
+library(ROCR)
+probs <- predict(nb_mod2, test2, type="raw")
+pred <- prediction(probs[, 2], test2$expert_label)
+perf_nb <- performance(pred, measure='tpr', x.measure='fpr')
+roc_nb <- data.frame(fpr=unlist(perf_nb@x.values), tpr=unlist(perf_nb@y.values))
+roc_nb$method <- "naive bayes"
+ggplot(data=roc_nb,aes(x=fpr, y=tpr, linetype=method, color=method)) + 
+  geom_line() +
+  geom_abline(a=1, b=0, linetype=2) +
+  theme(legend.position=c(0.8,0.2), legend.title=element_blank())
 ```
 
 
