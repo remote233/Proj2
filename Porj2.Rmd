@@ -187,7 +187,7 @@ validation_method1 = image3_filtered[image3_filtered$y<lim1,]
 ```
 
 ### Second Method
-In the second method, we can use blocks to split the all the images and randomly select 70% blocks as our training set, 20% as validation set, and the remaining 10% as test set. We plan to divide each image into 100 blocks and then we will have totally 300 blocks. Then, we can divide those 300 blocks into train, validation, and test sets according to the ratio we set. For both methods, we will delete unlabeled pixels after splitting the data because they are not useful for our classification.
+In the second method, we can use blocks to split the all the images and randomly select 60% blocks as our training set, 20% as validation set, and the remaining 20% as test set. We plan to divide each image into 100 blocks and then we will have totally 300 blocks. Then, we can divide those 300 blocks into train, validation, and test sets according to the ratio we set. For both methods, we will delete unlabeled pixels after splitting the data because they are not useful for our classification.
 ```{r}
 set.seed(111)
 image1_xcut = seq(min(image1$x),max(image1$x),length=11)
@@ -221,7 +221,7 @@ for(i in 1:10){
   }
 }
 sample_indexs = 1:300 
-train_index = sample(sample_indexs,size = 210,replace = FALSE)
+train_index = sample(sample_indexs,size = 180,replace = FALSE)
 validation_index = sample(sample_indexs[-train_index],size=60,replace = FALSE)
 test_index = sample_indexs[-c(train_index,validation_index)]
 
