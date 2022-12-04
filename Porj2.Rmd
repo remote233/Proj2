@@ -454,6 +454,7 @@ result_list2 <- list(lr_result2, nb_result2, lda_result2, qda_result2, knn_resul
 result_table2 <- result_list2 %>% reduce(full_join, by="folds")
 print(result_table2)
 ```
+
 ```{r}
 # test accuracy
 test1 <- test_method1 %>% 
@@ -479,6 +480,7 @@ lr_pred1 <- predict(lr_mod1, test1, type="response")
 pred = rep(0,length(lr_pred1))
 pred[lr_pred1>0.5] = 1
 test_accuracy[1,1] <- round(mean(pred==test1$expert_label),3)
+
 lr_mod2 <- glm(form, data=train2,family = "binomial")
 lr_pred2 <- predict(lr_mod2, test2, type="response")
 pred = rep(0,length(lr_pred2))
@@ -487,27 +489,28 @@ test_accuracy[1,2] <- round(mean(pred==test2$expert_label),3)
 
 # Naive Bayes
 nb_mod1 <- naiveBayes(form, data=train1)
-pred = predict(nb_mod1, test1)
-test_accuracy[2,1] = round(mean(pred==test1$expert_label),3)
+nb_pred1 = predict(nb_mod1, test1)
+test_accuracy[2,1] = round(mean(nb_pred1==test1$expert_label),3)
 nb_mod2 <- naiveBayes(form, data=train2)
-pred = predict(nb_mod2, test2)
-test_accuracy[2,2] = round(mean(pred==test2$expert_label),3)
+nb_pred2 = predict(nb_mod2, test2)
+test_accuracy[2,2] = round(mean(nb_pred2==test2$expert_label),3)
 
 # QDA
 qda_mod1 <- qda(form, data=train1)
-pred = predict(qda_mod1, test1)
-test_accuracy[3,1] = round(mean(pred$class==test1$expert_label),3)
+qda_pred1 = predict(qda_mod1, test1)
+test_accuracy[3,1] = round(mean(qda_pred1$class==test1$expert_label),3)
+
 qda_mod2 <- qda(form, data=train2)
-pred = predict(qda_mod2, test2)
-test_accuracy[3,2] = round(mean(pred$class==test2$expert_label),3)
+qda_pred2 = predict(qda_mod2, test2)
+test_accuracy[3,2] = round(mean(qda_pred2$class==test2$expert_label),3)
 
 # LDA
 lda_mod1 <- lda(form, data=train1)
-pred = predict(lda_mod1, test1)
-test_accuracy[4,1] = round(mean(pred$class==test1$expert_label),3)
+lda_pred1 = predict(lda_mod1, test1)
+test_accuracy[4,1] = round(mean(lda_pred1$class==test1$expert_label),3)
 lda_mod2 <- lda(form, data=train2)
-pred = predict(lda_mod2, test2)
-test_accuracy[4,2] = round(mean(pred$class==test2$expert_label),3)
+lda_pred2 = predict(lda_mod2, test2)
+test_accuracy[4,2] = round(mean(lda_pred2$class==test2$expert_label),3)
 
 # KNN
 knn_mod1 <- knn(train1[,c("NDAI","SD","CORR")], test1[,c("NDAI","SD","CORR")], train1$expert_label, k=20)
@@ -540,10 +543,116 @@ test_accuracy[6,2] <- round(mean(pred==test2$expert_label),3)
 
 test_accuracy
 ```
+## 3(b)
+The cut-off value is the point on the curve that is cloest to the upper-left corner point, (0,1) on the graph.
+```{r}
+## All roc curve are based on split method2
+alpha=seq(0.01,0.99,0.01)
+# Logistic_regression
+FPR1=c()
+TPR1=c()
+for(i in 1:99){
+  pred=rep(0,nrow(test2))
+  pred[lr_pred2>alpha[i]]=1
+  
+  obs=test2$expert_label
+  table=table(obs,factor(pred,level=0:1))
+  
+  ## sum of 1st column is pred's label=0, sum of 2nd column is pred's label=1, 
+  FPR1[i]=table[1,2]/(table[1,1]+table[1,2])
+  TPR1[i]=table[2,2]/(table[2,1]+table[2,2])
+}
+```
+
+```{r}
+# Naive Bayes
+FPR2=c()
+TPR2=c()
+for(i in 1:99){
+  nb_pred2 = predict(nb_mod2, test2, type="raw")
+  pred=rep(0,nrow(test2))
+  pred[nb_pred2[,2]>alpha[i]]=1
+  
+  obs=test2$expert_label
+  table=table(obs,factor(pred,level=0:1))
+  
+  ## sum of 1st column is pred's label=0, sum of 2nd column is pred's label=1, 
+  FPR2[i]=table[1,2]/(table[1,1]+table[1,2])
+  TPR2[i]=table[2,2]/(table[2,1]+table[2,2])
+}
+```
+
+
+```{r}
+# QDA
+FPR3=c()
+TPR3=c()
+for(i in 1:99){
+
+  pred=rep(0,nrow(test2))
+  pred[qda_pred2$posterior[,2]>alpha[i]]=1
+  
+  obs=test2$expert_label
+  table=table(obs,factor(pred,level=0:1))
+  
+  ## sum of 1st column is pred's label=0, sum of 2nd column is pred's label=1, 
+  FPR3[i]=table[1,2]/(table[1,1]+table[1,2])
+  TPR3[i]=table[2,2]/(table[2,1]+table[2,2])
+}
+```
+
+```{r}
+# LDA
+FPR4=c()
+TPR4=c()
+for(i in 1:99){
+
+  pred=rep(0,nrow(test2))
+  pred[lda_pred2$posterior[,2]>alpha[i]]=1
+  
+  obs=test2$expert_label
+  table=table(obs,factor(pred,level=0:1))
+  
+  ## sum of 1st column is pred's label=0, sum of 2nd column is pred's label=1, 
+  FPR4[i]=table[1,2]/(table[1,1]+table[1,2])
+  TPR4[i]=table[2,2]/(table[2,1]+table[2,2])
+}
+```
+
+```{r}
+# KNN
+set.seed(12345)
+#knn_mod2 <- knn(train2[,c("NDAI","SD","CORR")], test2[,c("NDAI","SD","CORR")], train2$expert_label, k=20)
+train_knn_roc = roc(factor(test2$expert_label,ordered = TRUE),as.numeric(knn_mod2),plot = TRUE,print.auc = TRUE,print.thres = 0.5,main = "ROC for KNN")
+```
+
+```{r}
+# XGBoost
+FPR6=c()
+TPR6=c()
+for(i in 1:99){
+  pred_prob = predict(train_xgb2, xgb_test,outputmargin=FALSE)
+  pred=rep(0,nrow(test2))
+  pred[pred_prob>alpha[i]]=1
+  
+  obs=test2$expert_label
+  table=table(obs,factor(pred,level=0:1))
+  
+  ## sum of 1st column is pred's label=0, sum of 2nd column is pred's label=1, 
+  FPR6[i]=table[1,2]/(table[1,1]+table[1,2])
+  TPR6[i]=table[2,2]/(table[2,1]+table[2,2])
+}
+```
+```{r}
+df=data.frame(FPR=c(FPR1,FPR2,FPR3,FPR4,FPR6),TPR=c(TPR1,TPR2,TPR3,TPR4,TPR6),method=rep(c("logistic_reg","naive_bayes","QDA","LDA","XGBoost"),each=99))
+ggplot(data = df, aes(x=FPR, y=TPR)) + geom_line(aes(colour=method))
+```
+
 
 
 
 # 4 Diagnostics 
+## (a)
 
 
 # Acknowledgement
