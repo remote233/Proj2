@@ -500,7 +500,7 @@ result_table2 %>%
   kable_classic(full_width = F, html_font = "helvetica") %>%
   kable_styling(latex_options = "HOLD_position", full_width = F, position = "left")
 ```
-
+ 
 After getting the accuracies across folds with different models, we can now train the data again and fit our test data with different models. Then, we can calculate the test accuracy of different models in data from both split methods. From the result table below, we can notice that all of the models still perform better in data from method2. In addition, just like the accuracies from K-fold Cross Validation, XGBoost and KNN perform much better than the other models in both data, and the difference between these two models become smaller than that in the K-fold Cross Validation. 
 
 
