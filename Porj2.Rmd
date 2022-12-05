@@ -557,8 +557,17 @@ test_accuracy[6,2] <- round(mean(pred==test2$expert_label),3)
 test_accuracy
 ```
 ## 3(b)
+<<<<<<< HEAD
 The cut-off value is the point on the curve that is cloest to the upper-left corner point, (0,1) on the graph.
 ```{r}
+=======
+
+```{r}
+euclidean=function(a, b){
+  sqrt(sum((a - b)^2))
+  }
+
+>>>>>>> f5636cef5bf612bbece285e169b84bddc5c8618b
 library(e1071)
 library(ROCR)
 # Logistis regression
@@ -568,12 +577,48 @@ perf_lr <- performance(pred_lr, measure='tpr', x.measure='fpr')
 roc_lr <- data.frame(fpr=unlist(perf_lr@x.values), tpr=unlist(perf_lr@y.values))
 roc_lr$method <- "logistic regression"
 
+min_distance=100
+lr_record_x=0
+lr_record_y=0
+for(i in 1:length(roc_lr$fpr)){
+  current_distance=euclidean(c(roc_lr$fpr[i],roc_lr$tpr[i]),c(0,1))
+  if (current_distance<min_distance){
+    min_distance=current_distance
+    lr_record_x=roc_lr$fpr[i]
+    lr_record_y=roc_lr$tpr[i]
+  }
+}
+
+p1=ggplot(data=rbind(roc_lr),aes(x=fpr, y=tpr, linetype=method)) + 
+  geom_line() +
+  geom_abline(intercept =0, slope = 1, linetype=2) +
+  geom_point(aes(x=lr_record_x,y=lr_record_y),col="red")+
+  ggtitle("roc curve of logistics regression")
+
 # Naive Bayes
 probs_nb <- predict(nb_mod2, test2, type="raw")
 pred_nb <- prediction(probs_nb[, 2], test2$expert_label)
 perf_nb <- performance(pred_nb, measure='tpr', x.measure='fpr')
 roc_nb <- data.frame(fpr=unlist(perf_nb@x.values), tpr=unlist(perf_nb@y.values))
 roc_nb$method <- "naive bayes"
+
+min_distance=100
+nb_record_x=0
+nb_record_y=0
+for(i in 1:length(roc_nb$fpr)){
+  current_distance=euclidean(c(roc_nb$fpr[i],roc_nb$tpr[i]),c(0,1))
+  if (current_distance<min_distance){
+    min_distance=current_distance
+    nb_record_x=roc_nb$fpr[i]
+    nb_record_y=roc_nb$tpr[i]
+  }
+}
+
+p2=ggplot(data=rbind(roc_nb),aes(x=fpr, y=tpr, linetype=method)) + 
+  geom_line() +
+  geom_abline(intercept =0, slope = 1, linetype=2) +
+  geom_point(aes(x=nb_record_x,y=nb_record_y),col="red")+
+  ggtitle("roc curve of naive bayes")
 
 # QDA
 probs_qda = predict(qda_mod2, test2)
@@ -582,12 +627,48 @@ perf_qda <- performance(pred_qda, measure='tpr', x.measure='fpr')
 roc_qda <- data.frame(fpr=unlist(perf_qda@x.values), tpr=unlist(perf_qda@y.values))
 roc_qda$method <- "QDA"
 
+min_distance=100
+qda_record_x=0
+qda_record_y=0
+for(i in 1:length(roc_qda$fpr)){
+  current_distance=euclidean(c(roc_qda$fpr[i],roc_qda$tpr[i]),c(0,1))
+  if (current_distance<min_distance){
+    min_distance=current_distance
+    qda_record_x=roc_qda$fpr[i]
+    qda_record_y=roc_qda$tpr[i]
+  }
+}
+p3=ggplot(data=rbind(roc_qda),aes(x=fpr, y=tpr, linetype=method)) + 
+  geom_line() +
+  geom_abline(intercept =0, slope = 1, linetype=2) +
+  geom_point(aes(x=qda_record_x,y=qda_record_y),col="red")+
+  ggtitle("roc curve of qda")
+
 # LDA
 probs_lda = predict(lda_mod2, test2)
 pred_lda <- prediction(probs_lda$posterior[,2], test2$expert_label)
 perf_lda <- performance(pred_lda, measure='tpr', x.measure='fpr')
 roc_lda <- data.frame(fpr=unlist(perf_lda@x.values), tpr=unlist(perf_lda@y.values))
 roc_lda$method <- "LDA"
+
+min_distance=100
+lda_record_x=0
+lda_record_y=0
+for(i in 1:length(roc_lda$fpr)){
+  current_distance=euclidean(c(roc_lda$fpr[i],roc_lda$tpr[i]),c(0,1))
+  if (current_distance<min_distance){
+    min_distance=current_distance
+    lda_record_x=roc_lda$fpr[i]
+    lda_record_y=roc_lda$tpr[i]
+  }
+}
+
+p4=ggplot(data=rbind(roc_lda),aes(x=fpr, y=tpr, linetype=method)) + 
+  geom_line() +
+  geom_abline(intercept =0, slope = 1, linetype=2) +
+  geom_point(aes(x=lda_record_x,y=lda_record_y),col="red")+
+  ggtitle("roc curve of lda")
+
 
 # KNN
 #knn_mod2 <- knn(train2[,c("NDAI","SD","CORR")], test2[,c("NDAI","SD","CORR")], train2$expert_label, k=20)
@@ -599,6 +680,24 @@ perf_knn=performance(pred_knn, measure = "tpr",x.measure =  "fpr")
 roc_knn <- data.frame(fpr=unlist(perf_knn@x.values), tpr=unlist(perf_knn@y.values))
 roc_knn$method <- "KNN"
 
+min_distance=100
+knn_record_x=0
+knn_record_y=0
+for(i in 1:length(roc_knn$fpr)){
+  current_distance=euclidean(c(roc_knn$fpr[i],roc_knn$tpr[i]),c(0,1))
+  if (current_distance<min_distance){
+    min_distance=current_distance
+    knn_record_x=roc_knn$fpr[i]
+    knn_record_y=roc_knn$tpr[i]
+  }
+}
+p5=ggplot(data=rbind(roc_knn),aes(x=fpr, y=tpr, linetype=method)) + 
+  geom_line() +
+  geom_abline(intercept =0, slope = 1, linetype=2) +
+  geom_point(aes(x=knn_record_x,y=knn_record_y),col="red")+
+  ggtitle("roc curve of knn")
+
+
 # XGBoost
 probs_XGBoost = predict(train_xgb2, xgb_test2,type="response")
 pred_XGBoost <- prediction(probs_XGBoost, test2$expert_label)
@@ -606,9 +705,20 @@ perf_XGBoost <- performance(pred_XGBoost, measure='tpr', x.measure='fpr')
 roc_XGBoost <- data.frame(fpr=unlist(perf_XGBoost@x.values), tpr=unlist(perf_XGBoost@y.values))
 roc_XGBoost$method <- "XGBoost"
 
-
-ggplot(data=rbind(roc_lr,roc_nb,roc_qda,roc_lda,roc_knn,roc_XGBoost),aes(x=fpr, y=tpr, linetype=method, color=method)) + 
+min_distance=100
+XGBoost_record_x=0
+XGBoost_record_y=0
+for(i in 1:length(roc_XGBoost$fpr)){
+  current_distance=euclidean(c(roc_XGBoost$fpr[i],roc_XGBoost$tpr[i]),c(0,1))
+  if (current_distance<min_distance){
+    min_distance=current_distance
+    XGBoost_record_x=roc_XGBoost$fpr[i]
+    XGBoost_record_y=roc_XGBoost$tpr[i]
+  }
+}
+p6=ggplot(data=rbind(roc_XGBoost),aes(x=fpr, y=tpr, linetype=method)) + 
   geom_line() +
+<<<<<<< HEAD
   geom_abline(linetype=2) +
   theme(legend.position=c(0.8,0.2), legend.title=element_blank())
 ```
@@ -631,6 +741,22 @@ F1_table[1,2] <- confusionMatrix(as.factor(pred), as.factor(test2$expert_label))
 #naive bayes
 F1_table[2,1] <- confusionMatrix(as.factor(nb_pred1), as.factor(test1$expert_label))$byClass["F1"]
 F1_table[2,2] <- confusionMatrix(as.factor(nb_pred2), as.factor(test2$expert_label))$byClass["F1"]
+=======
+  geom_abline(intercept =0, slope = 1, linetype=2) +
+  geom_point(aes(x=XGBoost_record_x,y=XGBoost_record_y),col="red")+
+  ggtitle("roc curve of XGBoost")
+
+grid.arrange(p1,p2,p3,p4,p5,p6,nrow=3)
+
+
+#ggplot(data=rbind(roc_lr,roc_nb,roc_qda,roc_lda,roc_knn,roc_XGBoost),aes(x=fpr, y=tpr, linetype=method, color=method)) + 
+#  geom_line() +
+#  geom_abline(intercept =0, slope = 1, linetype=2) +
+#  theme(legend.position=c(0.8,0.2), legend.title=element_blank())
+```
+The cutoff point is highlighted as a red point in each ROC curve plot.
+In this project, we need to consider the cost of increasing true positive rate (fraction of cloudy sample that are classified as cloudy) and the cost of decreasing false positive rate (fraction of not cloudy sample that are classified as cloudy). This is the same as we need to control the cost of decreasing false negative rate (fraction of not cloudy sample that are classified as cloudy), and control the cost of decreasing false positive rate. In this project, because both classification error will lead to incorrectly temperature prediction, we assume the cost of decrease these two error are the same. Therefore, we decide the cutoff point is the point whose Euclidean distance from top left corner in ROC curve plot is minimum. The cutoff point is highlighted implies the probability threshold in classification. 
+>>>>>>> f5636cef5bf612bbece285e169b84bddc5c8618b
 
 #QDA
 F1_table[3,1] <- confusionMatrix(as.factor(qda_pred1$class), as.factor(test1$expert_label))$byClass["F1"]
