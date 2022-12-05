@@ -6,7 +6,7 @@ output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE)
 source("CVmaster.R", local = knitr::knit_global())
 library(tidyverse)
 library(ggplot2)
@@ -18,6 +18,8 @@ library(cvAUC)
 library(dplyr)
 library(pROC)
 library(randomForest)
+library(Metrics)
+library(kableExtra)
 ```
 
 ***
@@ -56,9 +58,18 @@ per_total <- image %>%
   group_by(expert_label)%>%
   summarise(image_total = round(n()/nrow(.),3))
 per_combined <- list(per1,per2,per3,per_total)
-per_combined %>% reduce(full_join, by='expert_label')
+per_combined <- per_combined %>% reduce(full_join, by='expert_label')
+per_combined %>%
+  kbl(caption="Table 1: Summary Statistics of Financial Well-Being  
+               Score by Gender and Education",
+       format= "latex",
+                  align="r") %>%
+  kable_classic(full_width = F, html_font = "helvetica") %>%
+  kable_styling(latex_options = "HOLD_position")
 ```
-Then, we can plot the maps of different images by x,y corrdinates values with expert labels as colors as:
+From the table above, we can find that the coverage of expert label in different images are quite different. For image1, over 70% of pixels have been labeled, but for image3, only about 50% of pixels have been labeled. Moreover, the ratios of cloud and non-cloud class in each image are very different. In image1, the ratio is very close to 1:1, but for other two images, the number of pixels with non-cloud labels are obviously much more than those with cloud labels. Overall, about 40% of total pixels are not labeled. About 37% of total pixels are labeled non-cloud, while only about 23% of total pixels are labeled cloud.
+
+Then, we can plot the maps of different images by x,y coordinates values with expert labels as colors as:
 ```{r}
 myColors = c("gray40","black","white")
 p1 = ggplot(image1, aes(x, y, colour = factor(expert_label))) + 
@@ -75,7 +86,7 @@ p3 = ggplot(image3, aes(x, y, colour = factor(expert_label))) +
   labs(colour="expert_label")
 ```
     
-```{r,fig.width=8,fig.height=3}
+```{r,fig.width=8,fig.height=3, fig.cap="\\label{fig:figs}Maps"}
 gg_legend <- ggplot(image1, aes(x, y, colour = factor(expert_label))) + 
   geom_point()+
   scale_color_manual(values=myColors)+
@@ -94,7 +105,7 @@ In the graphs above, we plot each pixels as a single dot in the graph, but they 
 
 
 ## (c)
-```{r}
+```{r,fig.width=4,fig.height=4, fig.cap="\\label{fig:figs}Heatmap for correlations between features"}
 image = image %>%
   mutate(expert_label = factor(expert_label))
 image_cor = round(cor(image[,4:11]),2)
@@ -130,6 +141,7 @@ theme(
   guides(fill = guide_colorbar(barwidth = 7, barheight = 1,
                 title.position = "top", title.hjust = 0.5))
 ```
+\newline
 Since the size of our dataset is too large and there are 7 variables to pair, it might not be a good idea to use pairs plot here. Instead, we can draw a heat map for the correlations between the features themselves, and the result is very interesting. NDAI, SD and CORR are positively correlated, and all the radiance variables are also positively correlated. However, radiance and other features(CORR,NDAI,SD) are negatively correlated. In addition, we find that radiance angle AN, AF, BF, CF are strongly correlated since their correlations are all larger than 0.75. Radiance angle DF is strongly correlated to radiance angle CF and BF, but its correlations with radiance angle AF and AN are not that strong.
 
 ```{r}
@@ -151,13 +163,15 @@ g8 = ggplot(image,aes(x=expert_label, y=AN))+
   geom_boxplot()
 ```
 
-```{r,fig.width=9,fig.height=3}
+```{r,fig.width=9,fig.height=3, fig.cap="\\label{fig:figs}Boxplots for NDAI, SD, CORR"}
 grid.arrange(g1,g2,g3,ncol=3)
 ```
+\newline
 By plotting the boxplots of NDAI, SD, and CORR with expert label as x-axis, we find that cloud class tends to have higher values of NDAI, SD and CORR.
-```{r,fig.width=9,fig.height=6}
+```{r,fig.width=9,fig.height=6, fig.cap="\\label{fig:figs}Boxplots for radiances with different angles"}
 grid.arrange(g4,g5,g6,g7,g8,ncol=3)
 ```
+\newline
 Again, by plotting boxplots of DF, CF, BF, AF and AN with expert labels as x-axis, we find that cloud class tends to have smaller values of radiance in different angles except that in DF. For radiance angle DF, all the classes have similar distributions of radiance values, so it is hard to tell differences between cloud and no cloud classes.
 
 
@@ -166,24 +180,23 @@ Again, by plotting boxplots of DF, CF, BF, AF and AN with expert labels as x-axi
 ## (a)
 
 ### First Splitting method
-For our first method, we want to use a simple and direct way to split our data. In order to have enough data for training, we can use the data of two pictures as our training set so that the training set takes 66.6% of the entire data. Then, we only need to split the data of image3 into a validation and test set. Here, we set the ratio of the amount of data in three sets to be around 6:2:1, so validation set should take about 22.2% of the entire data and test set should take 11.1% of the entire data. We first set two images to be our training set, and split the remaining picture into three rectangles of equal size. Then, we can take two rectangles as our validation set and one as test set. In this method, we need to make sure that each rectangle we split should contain data from different classes, or be diversified. After checking the three images we plotted in 1(b), we decide to use the first two images as our training set, and split the third one. In the third image, we can set thresholds values for the y-axis, and divide the image into three rectangles accroding to these thresholds values.
+For our first method, we want to use a simple and direct way to split our data. In order to have enough data for training and testing, we can use the data of two pictures as our training set so that the training set takes 66.6% of the entire data. Then, we only need to split the data of image3 into a validation and test set. Here, we set the ratio of the amount of data in three sets to be around 2:1:1, so validation set should take about 16.6% of the entire data and test set should take 16.6% of the entire data. We first set two images to be our training set, and split the remaining picture into two rectangles of equal size. Then, we can take one rectangle as our validation set and one as test set. In this method, we need to make sure that each rectangle we split should contain data from different classes, or be diversified. After checking the three images we plotted in 1(b), we decide to use the first two images as our training set, and split the third one. In the third image, we can set thresholds values for the y-axis, and divide the image into two rectangles according to the threshold value.
 ```{r}
 image3_filtered = image3 %>% filter(expert_label!=0) %>% mutate(expert_label=factor(expert_label))
 y_max_p3 = max(image3_filtered$y)
 y_min_p3 = min(image3_filtered$y)
-lim1 = y_max_p3-(y_max_p3-y_min_p3)/3
-lim2 = y_max_p3-(y_max_p3-y_min_p3)/3*2
+lim = y_max_p3-(y_max_p3-y_min_p3)/2
 ggplot(image3_filtered,aes(x,y,color=expert_label))+
   geom_point()+
   scale_color_manual(values=c("grey40","blue"))+
   labs(colour="expert_label")+
-  geom_hline(yintercept=c(lim1,lim2),color="red")
+  geom_hline(yintercept=lim,color="red")
 ```
 From the plot above, we can find that our thresholds for y-axis divide the image into three rectangles containing data from different classes. We can pick the one on the top to be our test set, and the remaining two to be our validation set.
 ```{r}
 train_method1 = rbind(image1,image2) %>% filter(expert_label!=0) %>% mutate(expert_label=factor(expert_label))
-test_method1 = image3_filtered[image3_filtered$y>=lim1,]
-validation_method1 = image3_filtered[image3_filtered$y<lim1,]
+test_method1 = image3_filtered[image3_filtered$y>=lim,]
+validation_method1 = image3_filtered[image3_filtered$y<lim,]
 ```
 
 ### Second Method
@@ -254,7 +267,7 @@ accuracy[2,1] = sum(test_method1$expert_label==-1)/nrow(test_method1)
 accuracy[2,2] = sum(test_method2$expert_label==-1)/nrow(test_method2)
 accuracy
 ```
-This kind of trivial classifier will have high accuracy when a dataset consist almost entirely of cloud-free class. On the table above, we can find that the trivial classifier does not perform well on most of the sets. For the validation set of our method1, since cloud-free class occupies a large proportion of the data, the accuracy of trivial classifier is pretty high compared with other sets, but the accuracy is still only around 0.7. Therefore, we would say our classification problem is not trivial.
+This kind of trivial classifier will have high accuracy when a dataset consist almost entirely of cloud-free class. On the table above, we can find that the trivial classifier does not perform well on most of the sets. For the validation set of our method1, since cloud-free class occupies a large proportion of the data, the accuracy of trivial classifier is pretty high compared with other sets, but the accuracy is still only around 0.75. Therefore, we would say our classification problem is not trivial.
 
 ## (c)
 In order to determine 3 best features out of 8 features, we firstly used random forest to find and plot the importance of each feature based on train sets of both methods. We found that NDAI, SD and CORR were the features having the greatest importance in both plots. Then, we decided to use each feature to build a single-predictor logistics regression model based on training data set from both methods, and use the validation data sets from both methods to draw the ROC curve.
@@ -525,9 +538,9 @@ watchlist = list(train=xgb_train, test=xgb_test)
 model = xgb.train(data = xgb_train, max.depth = 3, watchlist=watchlist, nrounds = 1000, verbose = 0)
 final_rounds = as.integer(model$evaluation_log[which.min(test_rmse),1])
 train_xgb1 = xgboost(data = xgb_train, max.depth = 3, nrounds = final_rounds, verbose = 0)
-pred_prob = predict(train_xgb1, xgb_test)
-pred = rep(0,length(pred_prob))
-pred[pred_prob>0.5] = 1
+xgb_pred1 = predict(train_xgb1, xgb_test)
+pred = rep(0,length(xgb_pred1))
+pred[xgb_pred1>0.5] = 1
 test_accuracy[6,1] <- round(mean(pred==test1$expert_label),3)
 
 xgb_train2 = xgb.DMatrix(data = data.matrix(train2[,c("NDAI","SD","CORR")]), label = train2$expert_label)
@@ -536,41 +549,15 @@ watchlist = list(train=xgb_train2, test=xgb_test2)
 model = xgb.train(data = xgb_train2, max.depth = 3, watchlist=watchlist, nrounds = 1000, verbose = 0)
 final_rounds = as.integer(model$evaluation_log[which.min(test_rmse),1])
 train_xgb2 = xgboost(data = xgb_train2, max.depth = 3, nrounds = final_rounds, verbose = 0)
-pred_prob = predict(train_xgb2, xgb_test2)
-pred = rep(0,length(pred_prob))
-pred[pred_prob>0.5] = 1
+xgb_pred2 = predict(train_xgb2, xgb_test2)
+pred = rep(0,length(xgb_pred2))
+pred[xgb_pred2>0.5] = 1
 test_accuracy[6,2] <- round(mean(pred==test2$expert_label),3)
 
 test_accuracy
 ```
 ## 3(b)
 The cut-off value is the point on the curve that is cloest to the upper-left corner point, (0,1) on the graph.
-```{r}
-# XGBoost
-FPR6=c()
-TPR6=c()
-for(i in 1:99){
-  pred_prob = predict(train_xgb2, xgb_test,outputmargin=FALSE)
-  pred=rep(0,nrow(test2))
-  pred[pred_prob>alpha[i]]=1
-  
-  obs=test2$expert_label
-  table=table(obs,factor(pred,level=0:1))
-  
-  ## sum of 1st column is pred's label=0, sum of 2nd column is pred's label=1, 
-  FPR6[i]=table[1,2]/(table[1,1]+table[1,2])
-  TPR6[i]=table[2,2]/(table[2,1]+table[2,2])
-}
-```
-
-
-```{r}
-df=data.frame(FPR=c(FPR1,FPR2,FPR3,FPR4,FPR6),TPR=c(TPR1,TPR2,TPR3,TPR4,TPR6),method=rep(c("logistic_reg","naive_bayes","QDA","LDA","XGBoost"),each=99))
-ggplot(data = df, aes(x=FPR, y=TPR)) + geom_line(aes(colour=method))
-```
-
-
-
 ```{r}
 library(e1071)
 library(ROCR)
@@ -622,12 +609,53 @@ roc_XGBoost$method <- "XGBoost"
 
 ggplot(data=rbind(roc_lr,roc_nb,roc_qda,roc_lda,roc_knn,roc_XGBoost),aes(x=fpr, y=tpr, linetype=method, color=method)) + 
   geom_line() +
-  geom_abline(a=1, b=0, linetype=2) +
+  geom_abline(linetype=2) +
   theme(legend.position=c(0.8,0.2), legend.title=element_blank())
 ```
+## (c)
+In order to assess the fit of our model more accurately, we decided to find the F1 score of our models.
+F1 score is a metric which is calculated as: $$F1 = 2 * \frac{Precision*Recall}{Precision+Recall}$$. A high F1 score means the false positives and false negatives of our model is pretty low. Therefore, the higher the F1 score, the better our model is.
+```{r}
+F1_table <- matrix(NA, ncol=2, nrow=6)
+colnames(F1_table) <- c("split method1", "split method2")
+rownames(F1_table) <- c("Logistic Regression", "Naive Bayes", "QDA", "LDA", "KNN", "XGBoost")
 
+#logistic regression
+pred = rep(0, length(test1$expert_label))
+pred[lr_pred1>0.5] = 1
+F1_table[1,1] <- confusionMatrix(as.factor(pred), as.factor(test1$expert_label))$byClass["F1"]
+pred = rep(0, length(test2$expert_label))
+pred[lr_pred2>0.5] = 1
+F1_table[1,2] <- confusionMatrix(as.factor(pred), as.factor(test2$expert_label))$byClass["F1"]
 
+#naive bayes
+F1_table[2,1] <- confusionMatrix(as.factor(nb_pred1), as.factor(test1$expert_label))$byClass["F1"]
+F1_table[2,2] <- confusionMatrix(as.factor(nb_pred2), as.factor(test2$expert_label))$byClass["F1"]
 
+#QDA
+F1_table[3,1] <- confusionMatrix(as.factor(qda_pred1$class), as.factor(test1$expert_label))$byClass["F1"]
+F1_table[3,2] <- confusionMatrix(as.factor(qda_pred2$class), as.factor(test2$expert_label))$byClass["F1"]
+
+#LDA
+F1_table[4,1] <- confusionMatrix(as.factor(lda_pred1$class), as.factor(test1$expert_label))$byClass["F1"]
+F1_table[4,2] <- confusionMatrix(as.factor(lda_pred2$class), as.factor(test2$expert_label))$byClass["F1"]
+
+#KNN
+F1_table[5,1] <- confusionMatrix(as.factor(knn_mod1), as.factor(test1$expert_label))$byClass["F1"]
+F1_table[5,2] <- confusionMatrix(as.factor(knn_mod2), as.factor(test2$expert_label))$byClass["F1"]
+
+#XGBoost
+pred = rep(0,length(xgb_pred1))
+pred[xgb_pred1>0.5] = 1
+F1_table[6,1] <- confusionMatrix(as.factor(pred), as.factor(test1$expert_label))$byClass["F1"]
+pred = rep(0,length(xgb_pred2))
+pred[xgb_pred2>0.5] = 1
+F1_table[6,2] <- confusionMatrix(as.factor(pred), as.factor(test2$expert_label))$byClass["F1"]
+
+print(round(F1_table,3))
+```
+
+From the F1 score table above, we can see that KNN and XGBoost models have the highest F1 scores in both dataset, so they are still the best two models among all of the models we tried.
 
 # 4 Diagnostics 
 ## (a)
