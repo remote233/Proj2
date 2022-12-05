@@ -557,17 +557,11 @@ test_accuracy[6,2] <- round(mean(pred==test2$expert_label),3)
 test_accuracy
 ```
 ## 3(b)
-<<<<<<< HEAD
-The cut-off value is the point on the curve that is cloest to the upper-left corner point, (0,1) on the graph.
-```{r}
-=======
-
 ```{r}
 euclidean=function(a, b){
   sqrt(sum((a - b)^2))
   }
 
->>>>>>> f5636cef5bf612bbece285e169b84bddc5c8618b
 library(e1071)
 library(ROCR)
 # Logistis regression
@@ -718,10 +712,21 @@ for(i in 1:length(roc_XGBoost$fpr)){
 }
 p6=ggplot(data=rbind(roc_XGBoost),aes(x=fpr, y=tpr, linetype=method)) + 
   geom_line() +
-<<<<<<< HEAD
-  geom_abline(linetype=2) +
-  theme(legend.position=c(0.8,0.2), legend.title=element_blank())
+  geom_abline(intercept =0, slope = 1, linetype=2) +
+  geom_point(aes(x=XGBoost_record_x,y=XGBoost_record_y),col="red")+
+  ggtitle("roc curve of XGBoost")
+
+grid.arrange(p1,p2,p3,p4,p5,p6,nrow=3)
+
+
+#ggplot(data=rbind(roc_lr,roc_nb,roc_qda,roc_lda,roc_knn,roc_XGBoost),aes(x=fpr, y=tpr, linetype=method, color=method)) + 
+#  geom_line() +
+#  geom_abline(intercept =0, slope = 1, linetype=2) +
+#  theme(legend.position=c(0.8,0.2), legend.title=element_blank())
 ```
+The cutoff point is highlighted as a red point in each ROC curve plot.
+In this project, we need to consider the cost of increasing true positive rate (fraction of cloudy sample that are classified as cloudy) and the cost of decreasing false positive rate (fraction of not cloudy sample that are classified as cloudy). This is the same as we need to control the cost of decreasing false negative rate (fraction of not cloudy sample that are classified as cloudy), and control the cost of decreasing false positive rate. In this project, because both classification error will lead to incorrectly temperature prediction, we assume the cost of decrease these two error are the same. Therefore, we decide the cutoff point is the point whose Euclidean distance from top left corner in ROC curve plot is minimum. The cutoff point is highlighted implies the probability threshold in classification. 
+
 ## (c)
 In order to assess the fit of our model more accurately, we decided to find the F1 score of our models.
 F1 score is a metric which is calculated as: $$F1 = 2 * \frac{Precision*Recall}{Precision+Recall}$$. A high F1 score means the false positives and false negatives of our model is pretty low. Therefore, the higher the F1 score, the better our model is.
@@ -741,22 +746,6 @@ F1_table[1,2] <- confusionMatrix(as.factor(pred), as.factor(test2$expert_label))
 #naive bayes
 F1_table[2,1] <- confusionMatrix(as.factor(nb_pred1), as.factor(test1$expert_label))$byClass["F1"]
 F1_table[2,2] <- confusionMatrix(as.factor(nb_pred2), as.factor(test2$expert_label))$byClass["F1"]
-=======
-  geom_abline(intercept =0, slope = 1, linetype=2) +
-  geom_point(aes(x=XGBoost_record_x,y=XGBoost_record_y),col="red")+
-  ggtitle("roc curve of XGBoost")
-
-grid.arrange(p1,p2,p3,p4,p5,p6,nrow=3)
-
-
-#ggplot(data=rbind(roc_lr,roc_nb,roc_qda,roc_lda,roc_knn,roc_XGBoost),aes(x=fpr, y=tpr, linetype=method, color=method)) + 
-#  geom_line() +
-#  geom_abline(intercept =0, slope = 1, linetype=2) +
-#  theme(legend.position=c(0.8,0.2), legend.title=element_blank())
-```
-The cutoff point is highlighted as a red point in each ROC curve plot.
-In this project, we need to consider the cost of increasing true positive rate (fraction of cloudy sample that are classified as cloudy) and the cost of decreasing false positive rate (fraction of not cloudy sample that are classified as cloudy). This is the same as we need to control the cost of decreasing false negative rate (fraction of not cloudy sample that are classified as cloudy), and control the cost of decreasing false positive rate. In this project, because both classification error will lead to incorrectly temperature prediction, we assume the cost of decrease these two error are the same. Therefore, we decide the cutoff point is the point whose Euclidean distance from top left corner in ROC curve plot is minimum. The cutoff point is highlighted implies the probability threshold in classification. 
->>>>>>> f5636cef5bf612bbece285e169b84bddc5c8618b
 
 #QDA
 F1_table[3,1] <- confusionMatrix(as.factor(qda_pred1$class), as.factor(test1$expert_label))$byClass["F1"]
