@@ -20,10 +20,10 @@ Firstly, we wrote our codes in the Proj2.Rmd and CVmaster.R according to the req
 
 In 2(d) of the project, we are asked to write a CVmaster funcion in a separate R script file and use this in the later part. It takes input including:
 
--   $\textbf{gen}$ _ $\textbf\{model}$ which is a function that will run a specific classifier.
--   $\textbf{train}$ _ $\textbf\{feature}$ which is a dataframe containing values of features in we want to use for prediction.
--   $\textbf{train}$ _ $\textbf\{label}$ which is a vector representing the actual value of labels of our training datasets.
--   $\textbf{train}$ _ $\textbf\{folds}$ which is a vector representing the fold number of each pixels we divided before using the CVmaster function.
+-   $\textbf{gen}$ _ $\textbf{model}$ which is a function that will run a specific classifier.
+-   $\textbf{train}$ _ $\textbf{feature}$ which is a dataframe containing values of features in we want to use for prediction.
+-   $\textbf{train}$ _ $\textbf{label}$ which is a vector representing the actual value of labels of our training datasets.
+-   $\textbf{train}$ _ $\textbf{folds}$ which is a vector representing the fold number of each pixels we divided before using the CVmaster function.
 -   $\textbf{K}$ which is a integer representing the number of folds we want to use. We set its default value to be 10.
 
 In the CVmaster function, we create a formula for the model and combine three data we input first. Then, we input the formula, combined dataframe and K into the gen_model function to get the CV accuracies across folds.

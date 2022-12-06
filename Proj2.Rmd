@@ -2,7 +2,7 @@
 title: "Project2"
 author: "Yiliang Yuan & Yiyu Lin"
 date: "2022-11-26"
-output: pdf_document
+output: word_document
 header-includes: |
   \usepackage{titlesec}
   \titlespacing{\section}{0pt}{12pt plus 2pt minus 1pt}{0pt plus 1pt minus 1pt}
@@ -30,6 +30,7 @@ library(knitr)
 
 ***
 ## 1 Data Collection and Exploration
+
 ## (a)
 Global climate change is an important scientific and public topic. In this topic, there’s a prediction that, in the Arctic area, surface air temperatures will have the strongest dependency on increasing atmospheric carbon dioxide levels. In further study of this dependency, the key is to detect the cloud condition. This is a challenging problem if we apply two previous MISR operational algorithms because of the similarities between the remote sensing image of clouds and that of ice- or snow-covered surface. Thus, based on the new idea of searching for cloud-free surface, the goal of this study is to develop a computationally efficient algorithm with the combination of classification and clustering methods, but without the requiring human intervention
 The data in this study represents 10 MISR orbits from Path 26, which is 360 km wide, and starting at the Arctic until Antarctica. The time between each orbit is 16 days. In this path, there’re 180 blocks to collect data, but for each orbit case, only 6 blocks’ data will be taken. In these 60 blocks, the author removed 3 blocks whose cloud condition can be detected by the previous MISR algorithm. Therefore, there are 57 blocks data units with 7,114,248 1.1-km resolution pixels with 36 radiation measurements for each pixel in this study. Author hand-labeled these data, with “1” for cloudy, “-1” for not cloudy, and “0” for ambiguous.
@@ -46,6 +47,9 @@ image3=read.csv('imagem3.txt', sep='',header=FALSE)
 colnames(image1) = c('y','x','expert_label','NDAI','SD','CORR','DF','CF','BF','AF','AN')
 colnames(image2) = c('y','x','expert_label','NDAI','SD','CORR','DF','CF','BF','AF','AN')
 colnames(image3) = c('y','x','expert_label','NDAI','SD','CORR','DF','CF','BF','AF','AN')
+image1$image_num = 1
+image2$image_num = 2
+image3$image_num = 3
 image <- rbind(image1,image2,image3)
 ```
 
@@ -65,15 +69,10 @@ per_total <- image %>%
   summarise(image_total = round(n()/nrow(.),3))
 per_combined <- list(per1,per2,per3,per_total)
 per_combined <- per_combined %>% reduce(full_join, by='expert_label')
-per_combined %>%
-  kbl(caption="Percent of pixels for the different classes",
-       format= "latex",
-                  align="r") %>%
-  kable_classic(full_width = F, html_font = "helvetica") %>%
-  kable_styling(latex_options = "HOLD_position")
+per_combined
 ```
 
-From the table above, we can find that the coverage of expert label in different images are quite different. For image1, over 70% of pixels have been labeled, but for image3, only about 50% of pixels have been labeled. Moreover, the ratios of cloud and non-cloud class in each image are very different. In image1, the ratio is very close to 1:1, but for other two images, the number of pixels with non-cloud labels are obviously much more than those with cloud labels. Overall, about 40% of total pixels are not labeled. About 37% of total pixels are labeled non-cloud, while only about 23% of total pixels are labeled cloud.
+From the Table 1 above, we can find that the coverage of expert label in different images are quite different. For image1, over 70% of pixels have been labeled, but for image3, only about 50% of pixels have been labeled. Moreover, the ratios of cloud and non-cloud class in each image are very different. In image1, the ratio is very close to 1:1, but for other two images, the number of pixels with non-cloud labels are obviously much more than those with cloud labels. Overall, about 40% of total pixels are not labeled. About 37% of total pixels are labeled non-cloud, while only about 23% of total pixels are labeled cloud.
 
 Then, we can plot the maps of different images by x,y coordinates values with expert labels as colors as:
 ```{r}
@@ -112,6 +111,10 @@ In the graphs above, we plot each pixels as a single dot in the graph, but they 
 
 
 ## (c)
+Since the size of our dataset is too large and there are 7 variables to pair, it might not be a good idea to use pairs plot here. Instead, we can draw a heat map for the correlations between the features themselves, and the result is very interesting. NDAI, SD and CORR are positively correlated, and all the radiance variables are also positively correlated. However, radiance and other features(CORR,NDAI,SD) are negatively correlated. In addition, we find that radiance angle AN, AF, BF, CF are strongly correlated since their correlations are all larger than 0.75. Radiance angle DF is strongly correlated to radiance angle CF and BF, but its correlations with radiance angle AF and AN are not that strong.
+
+After findin the correlations between features, we also want to explore the relationship between the expert labels and each feature. We decided to draw boxplots of each feature with different labels. Therefore, for each feature, we will have three boxplots. By viewing the boxplots of a feature, we can see whether its distributions are different with different expert labels. If the distributions of a feature are different with different expert labels, we would say that feature might be useful in predicting the label of pixels. In figure 3, we find that the distributions of NDAI, SD AND CORR are obviously different with different expert labels, and cloud class tends to have higher values of NDAI, SD and CORR. Also, in figure 4, we find that the distributions of radiance in different angles are different with different expert labels excpet the radiance in DF. Cloud class tends to have smaller values of radiance in different angles except that in DF. For radiance angle DF, all the classes have similar distributions of radiance values, so it is hard to tell differences between cloud and no cloud classes. 
+
 ```{r,fig.width=4,fig.height=4, fig.cap="\\label{fig:figs}Heatmap for correlations between features"}
 image = image %>%
   mutate(expert_label = factor(expert_label))
@@ -149,7 +152,6 @@ theme(
                 title.position = "top", title.hjust = 0.5))
 ```
 
-Since the size of our dataset is too large and there are 7 variables to pair, it might not be a good idea to use pairs plot here. Instead, we can draw a heat map for the correlations between the features themselves, and the result is very interesting. NDAI, SD and CORR are positively correlated, and all the radiance variables are also positively correlated. However, radiance and other features(CORR,NDAI,SD) are negatively correlated. In addition, we find that radiance angle AN, AF, BF, CF are strongly correlated since their correlations are all larger than 0.75. Radiance angle DF is strongly correlated to radiance angle CF and BF, but its correlations with radiance angle AF and AN are not that strong.
 
 ```{r}
 g1 = ggplot(image,aes(x=expert_label, y=NDAI))+
@@ -174,12 +176,11 @@ g8 = ggplot(image,aes(x=expert_label, y=AN))+
 grid.arrange(g1,g2,g3,ncol=3)
 ```
 
-By plotting the boxplots of NDAI, SD, and CORR with expert label as x-axis, we find that cloud class tends to have higher values of NDAI, SD and CORR.
+
 ```{r,fig.width=9,fig.height=6, fig.cap="\\label{fig:figs}Boxplots for radiances with different angles"}
 grid.arrange(g4,g5,g6,g7,g8,ncol=3)
 ```
 
-Again, by plotting boxplots of DF, CF, BF, AF and AN with expert labels as x-axis, we find that cloud class tends to have smaller values of radiance in different angles except that in DF. For radiance angle DF, all the classes have similar distributions of radiance values, so it is hard to tell differences between cloud and no cloud classes.
 
 
 # 2 Preparation
@@ -188,6 +189,9 @@ Again, by plotting boxplots of DF, CF, BF, AF and AN with expert labels as x-axi
 
 ### First Splitting method
 For our first method, we want to use a simple and direct way to split our data. In order to have enough data for training and testing, we can use the data of two pictures as our training set so that the training set takes 66.6% of the entire data. Then, we only need to split the data of image3 into a validation and test set. Here, we set the ratio of the amount of data in three sets to be around 2:1:1, so validation set should take about 16.6% of the entire data and test set should take 16.6% of the entire data. We first set two images to be our training set, and split the remaining picture into two rectangles of equal size. Then, we can take one rectangle as our validation set and one as test set. In this method, we need to make sure that each rectangle we split should contain data from different classes, or be diversified. After checking the three images we plotted in 1(b), we decide to use the first two images as our training set, and split the third one. In the third image, we can set thresholds values for the y-axis, and divide the image into two rectangles according to the threshold value.
+
+From the figure 5, we can find that our thresholds for y-axis divide the image into three rectangles containing data from different classes. We can pick the one on the top to be our test set, and the remaining two to be our validation set. For the training, validation and test dataset from method1, they will have 11 dimensions as the original datasets.
+
 ```{r, fig.width=5, fig.height=3, fig.cap="\\label{fig:figs}First split method"}
 image3_filtered = image3 %>% filter(expert_label!=0) %>% mutate(expert_label=factor(expert_label))
 y_max_p3 = max(image3_filtered$y)
@@ -200,7 +204,7 @@ ggplot(image3_filtered,aes(x,y,color=expert_label))+
   geom_hline(yintercept=lim,color="red")
 ```
 
-From the plot above, we can find that our thresholds for y-axis divide the image into three rectangles containing data from different classes. We can pick the one on the top to be our test set, and the remaining two to be our validation set.
+
 ```{r}
 train_method1 = rbind(image1,image2) %>% filter(expert_label!=0) %>% mutate(expert_label=factor(expert_label))
 test_method1 = image3_filtered[image3_filtered$y>=lim,]
@@ -208,7 +212,9 @@ validation_method1 = image3_filtered[image3_filtered$y<lim,]
 ```
 
 ### Second Method
-In the second method, we can use blocks to split the all the images and randomly select 60% blocks as our training set, 20% as validation set, and the remaining 20% as test set. We plan to divide each image into 100 blocks and then we will have totally 300 blocks. Then, we can divide those 300 blocks into train, validation, and test sets according to the ratio we set. For both methods, we will delete unlabeled pixels after splitting the data because they are not useful for our classification.
+In the second method, we can use blocks to split the all the images and randomly select 60% blocks as our training set, 20% as validation set, and the remaining 20% as test set. We plan to divide each image into 100 blocks and then we will have totally 300 blocks. Then, we can divide those 300 blocks into train, validation, and test sets according to the ratio we set. For method2, we need to record the index of the block of each pixel, and the number of the picture where the pixel is originally located. Therefore, for the training, validation and test dataset from method2, they will have 13 dimensions. For both methods, we will delete unlabeled pixels after splitting the data because they are not useful for our classification. 
+
+
 ```{r}
 set.seed(111)
 image1_xcut = seq(min(image1$x),max(image1$x),length=11)
@@ -273,18 +279,13 @@ accuracy[1,1] = sum(validation_method1$expert_label==-1)/nrow(validation_method1
 accuracy[1,2] = sum(validation_method2$expert_label==-1)/nrow(validation_method2)
 accuracy[2,1] = sum(test_method1$expert_label==-1)/nrow(test_method1)
 accuracy[2,2] = sum(test_method2$expert_label==-1)/nrow(test_method2)
-per_combined %>%
-  kbl(caption="Accuracy of trivial classifier",
-       format= "latex",
-                  align="r") %>%
-  kable_classic(full_width = F, html_font = "helvetica") %>%
-  kable_styling(latex_options = "HOLD_position")
+accuracy
 ```
 
-This kind of trivial classifier will have high accuracy when a dataset consist almost entirely of cloud-free class. On the table above, we can find that the trivial classifier does not perform well on most of the sets. For the validation set of our method1, since cloud-free class occupies a large proportion of the data, the accuracy of trivial classifier is pretty high compared with other sets, but the accuracy is still only around 0.75. Therefore, we would say our classification problem is not trivial.
+This kind of trivial classifier will have high accuracy when a dataset consist almost entirely of cloud-free class. On the table above, we can find that the trivial classifier does not perform well on most of the sets. For the validation set of our method1, since non-cloud class occupies a large proportion of the data, the accuracy of trivial classifier is pretty high compared with other sets, but the accuracy is still only around 0.75. Therefore, we would say our classification problem is not trivial.
 
 ## (c)
-In order to determine 3 best features out of 8 features, we firstly used random forest to find and plot the importance of each feature based on train sets of both methods. We found that NDAI, SD and CORR were the features having the greatest importance in both plots. Then, we decided to use each feature to build a single-predictor logistics regression model based on training data set from both methods, and use the validation data sets from both methods to draw the ROC curve.
+In order to determine 3 best features out of 8 features, we firstly used random forest to find and plot the importance of each feature based on train sets of both methods. We found that NDAI, SD and CORR were the features having the greatest importance in both plots. Then, we decided to use each feature to build a single-predictor logistics regression model based on training data set from both methods, and use the validation data sets to draw the ROC curve.
 We got two area under the ROC curve (AUC) values, and made them equal weighted to get the average AUC value to evaluate the overall performance of each model. 
 An ideal ROC curve will have huge top left corner, so the larger the average AUC value the better the classifier. Again, NDAI, SD and CORR had the largest average AUC values. So, combined with the result of random forest, we decided to use NDAI, SD, and CORR as our three "best" features. Among them, NDAI performed the best in both random forest and ROC curves, so it should be the most useful variable for our classification.
 
@@ -303,7 +304,7 @@ temp_validation_method2=validation_method2 %>%
   mutate(expert_label = ifelse(expert_label == -1,0,1))
 ```
 
-```{r, fig.width=8, fig.height=3, fig.cap="\\label{fig:figs}Feature importance by random forest"}
+```{r, fig.width=8, fig.height=4, fig.cap="\\label{fig:figs}Feature importance by random forest"}
 par(mfrow=c(1,2))
 cloud_RF1 = randomForest(as.factor(expert_label)~NDAI+SD+CORR+AF+BF+CF+DF+AN,data=temp_train_method1,ntree=300)
 cloud_RF2 = randomForest(as.factor(expert_label)~NDAI+SD+CORR+AF+BF+CF+DF+AN,data=temp_train_method2,ntree=300)
@@ -385,12 +386,7 @@ tab <- matrix(rounded_AUC, ncol=3)
 colnames(tab) <- c('m1_auc','m2_auc','avg_auc')
 rownames(tab) <- c("NDAI","SD","CORR","DF","CF","BF","AF","AN")
 tab=as.table(tab[order(tab[,3],decreasing = T),])
-tab %>%
-  kbl(caption="AUC of different features",
-       format= "latex",
-                  align="r") %>%
-  kable_classic(full_width = F, html_font = "helvetica") %>%
-  kable_styling(latex_options = "HOLD_position")
+tab
 ```
 
 # 3 Modeling
@@ -398,6 +394,7 @@ tab %>%
 ## (a)
 
 ### How to create folds.
+
 Firstly, we need to divide our datasets into k-folds. Let assume we would like to divide 10 folds. Due to the spatial dependency, we cannot randomly assign each pixel to a fold. Therefore, for the dataset we got by method1, we could divide the combination of training and validation data into 10 blocks by their x-axis values as below. We would combine the data of each column and make it as a fold. Then, by this method, we got 10 folds for our training and validation data from method1. However, we should notice that when the number of folds is large, there might be some folds with only one class. Just like the division in figure7, some folds consist mainly of one class. Therefore, our number of folds should not be very large. We think 10 folds are acceptable here because each fold still consist of different classes, but it should not be larger than 10.
 ```{r,fig.width=8,fig.height=3, fig.cap="\\label{fig:figs}Divide folds for method1"}
 cut1 = seq(min(image1$x),max(image1$x),length=11)[-c(1,11)]
@@ -425,11 +422,21 @@ shared_legend <- extract_legend(gg_legend)
 grid.arrange(arrangeGrob(cut_p1,cut_p2,cut_p3,ncol=3), shared_legend,nrow = 2, heights = c(10, 1))
 ```
 
-Then, for the training and validation data from method2, we could extract the index of the blocks in our data first. However, for some blocks, since they do not contain any labeled pixel, they might already be deleted, so we may not have 240 blocks as we expected. After that, we randomly divide all the blocks into 10 folds equally. Each fold should contain similar number of blocks. Therefore, we could get 10 folds as well. In order to make it more convenient for us to calculate, we should divide the fold for our training data before we use the CVmaster and give a fold number to each pixel in the training data.
+Then, for the training and validation data from method2, we could extract the index of the blocks in our data first. However, for some blocks, since they do not contain any labeled pixel, they might already be deleted, so we may not have 240 blocks as we expected. After that, we randomly divide all the blocks into 10 folds equally. Each fold should contain similar number of blocks. Therefore, we could get 10 folds as well. In order to make it more convenient for us to calculate, we should divide the fold for our training data before we use the CVmaster and give a fold number to each pixel in the training data. Also, we need to change the label of non-cloud class from -1 to 0 to satisfy our models.
 
-### CVV accuracy
+### Model Assumptions 
+
 After splitting the data, we can use the CVmaster function we wrote in the previous part to get the accuracies across folds with models including Logistic Regression, Naive Bayes, QDA, LDA, KNN and XGBoost. We decided to set the number of folds to be 10, and we tried each model in datasets from both split methods.
 Now, let's talk about the assumptions of models we choose and whehter they are satisfied:
+$\textbf{Logistic Regression}$: Firstly, we use a binary logistic regression model here, so it assumes our dependent variable, expert label, to be binary. Since our the expert label only have two distinct values, it is binary and thus it the first assumption is satisfied. In addition, Logistic Regression requires the observations to be independent. However, we know that our pixels have spatial dependency, so it does not satisfy the assumption of independence here. 
+$\textbf{Naive Bayes}$: This model assumes independence among all the features. In Figure 2, we can find that the correlation between NDAI and SD are 0.63 which is not very small, so we may say the assumption is not satisfied here. 
+$\textbf{Linear Discriminant Analysis (LDA) and Quadratic Discriminant Analysis (QDA)}$: LDA and QDA require the each variables to be independent which is not satisfied in our dataset. In addition, they require these features to be normally distributed but we find the assumption is still not met by drawing density plots of those features. (Due to the space limit, we won't show the density plots here.) 
+$\textbf{K-Nearest Neighbors (KNN)}$: KNN model assumes that data points with close proximity are highly similar. Since our data points have spatial dependency, this assumption is satisfied here. For the value of parameter K in KNN model, we would set it to be 20 because the data are spatially dependent and 20 is large enough to give good boundaries.
+$\textbf{eXtreme Gradient Boosting (XGBoost)}$: This model does not have important assumptions for the distribution or dependency of the variables of our data. Therefore, we could say XGBoost model is very useful for most classification problems, and it is applicable in our data here.
+
+### CV accuracies
+
+In the table below, we can get the accuracies across folds for different models in data from two split methods. In these two tables, we find that all of the models give better accuracy in data splitted by method2. This might be because the method2 split the two classes more evenly than method1. Also, among all of the models, XGBoost perform much better than all other models in both data. The average accuracy of XGBoost in data from method2 is even higher than 0.99. Besides, KNN is the second best model. Except these two models, the performances of other models are very close.
 
 ```{r}
 #split folds for data from method1
@@ -484,25 +491,14 @@ xgb_result2 <- CVmaster(XGBoost_model, train_feature2, train_label2, train_folds
 # accuracy table for both datasets with different models
 result_list1 <- list(lr_result1, nb_result1, lda_result1, qda_result1, knn_result1, xgb_result1)
 result_table1 <- result_list1 %>% reduce(full_join, by='folds')
-result_table1 %>%
-  kbl(caption="Accuracy of data from split method1",
-       format= "latex",
-                  align="r") %>%
-  kable_classic(full_width = F, html_font = "helvetica") %>%
-  kable_styling(latex_options = "HOLD_position", full_width = F, position = "float_left")
+result_table1
 
 result_list2 <- list(lr_result2, nb_result2, lda_result2, qda_result2, knn_result2, xgb_result2)
 result_table2 <- result_list2 %>% reduce(full_join, by="folds")
-result_table2 %>%
-  kbl(caption="Accuracy of data from split method2",
-       format= "latex",
-                  align="r") %>%
-  kable_classic(full_width = F, html_font = "helvetica") %>%
-  kable_styling(latex_options = "HOLD_position", full_width = F, position = "left")
+result_table2
 ```
  
 After getting the accuracies across folds with different models, we can now train the data again and fit our test data with different models. Then, we can calculate the test accuracy of different models in data from both split methods. From the result table below, we can notice that all of the models still perform better in data from method2. In addition, just like the accuracies from K-fold Cross Validation, XGBoost and KNN perform much better than the other models in both data, and the difference between these two models become smaller than that in the K-fold Cross Validation. 
-
 
 ```{r}
 # test accuracy
@@ -590,15 +586,14 @@ pred = rep(0,length(xgb_pred2))
 pred[xgb_pred2>0.5] = 1
 test_accuracy[6,2] <- round(mean(pred==test2$expert_label),3)
 
-test_accuracy %>%
-  kbl(caption="Test accuracy of models in different datasets",
-       format= "latex",
-                  align="r") %>%
-  kable_classic(full_width = F, html_font = "helvetica") %>%
-  kable_styling(latex_options = "HOLD_position", full_width = F, position = "left")
+test_accuracy
 ```
 
 ## 3(b)
+
+The cutoff point is highlighted as a red point in each ROC curve plot.
+In this project, we need to consider the cost of increasing true positive rate (fraction of cloudy sample that are classified as cloudy) and the cost of decreasing false positive rate (fraction of not cloudy sample that are classified as cloudy). This is the same as we need to control the cost of decreasing false negative rate (fraction of not cloudy sample that are classified as cloudy), and control the cost of decreasing false positive rate. In this project, because both classification error will lead to incorrectly temperature prediction, we assume the cost of decrease these two error are the same. Therefore, we decide the cutoff point is the point whose Euclidean distance from top left corner in ROC curve plot is minimum. The cutoff point is highlighted implies the probability threshold in classification. 
+
 ```{r}
 euclidean=function(a, b){
   sqrt(sum((a - b)^2))
@@ -766,12 +761,13 @@ grid.arrange(p1,p2,p3,p4,p5,p6,nrow=3)
 #  geom_abline(intercept =0, slope = 1, linetype=2) +
 #  theme(legend.position=c(0.8,0.2), legend.title=element_blank())
 ```
-The cutoff point is highlighted as a red point in each ROC curve plot.
-In this project, we need to consider the cost of increasing true positive rate (fraction of cloudy sample that are classified as cloudy) and the cost of decreasing false positive rate (fraction of not cloudy sample that are classified as cloudy). This is the same as we need to control the cost of decreasing false negative rate (fraction of not cloudy sample that are classified as cloudy), and control the cost of decreasing false positive rate. In this project, because both classification error will lead to incorrectly temperature prediction, we assume the cost of decrease these two error are the same. Therefore, we decide the cutoff point is the point whose Euclidean distance from top left corner in ROC curve plot is minimum. The cutoff point is highlighted implies the probability threshold in classification. 
+
 
 ## (c)
+
 In order to assess the fit of our model more accurately, we decided to find the F1 score of our models.
-F1 score is a metric which is calculated as: $$F1 = 2 * \frac{Precision*Recall}{Precision+Recall}$$. A high F1 score means the false positives and false negatives of our model is pretty low. Therefore, the higher the F1 score, the better our model is.
+F1 score is a metric which is calculated as: $$F1 = 2 * \frac{Precision*Recall}{Precision+Recall}$$
+A high F1 score means the false positives and false negatives of our model is pretty low. Therefore, the higher the F1 score, the better our model is.
 ```{r}
 F1_table <- matrix(NA, ncol=2, nrow=6)
 colnames(F1_table) <- c("split method1", "split method2")
@@ -809,17 +805,396 @@ pred = rep(0,length(xgb_pred2))
 pred[xgb_pred2>0.5] = 1
 F1_table[6,2] <- confusionMatrix(as.factor(pred), as.factor(test2$expert_label))$byClass["F1"]
 
-print(round(F1_table,3))
+F1_table = as.data.frame(round(F1_table, 3))
+F1_table
 ```
 
 From the F1 score table above, we can see that KNN and XGBoost models have the highest F1 scores in both dataset, so they are still the best two models among all of the models we tried.
 
-# 4 Diagnostics 
-## (a)
+
+# 4 Diagnostics
+
+## method 2
+```{r}
+xgb_train2 = xgb.DMatrix(data = data.matrix(train2[,c("NDAI","SD","CORR")]), label = train2$expert_label)
+xgb_test2 = xgb.DMatrix(data = data.matrix(test2[,c("NDAI","SD","CORR")]), label = test2$expert_label)
+watchlist = list(train=xgb_train2, test=xgb_test2)
+```
+
+## Adjust max.depth in xgboost to check parameter influence
+```{r}
+max_depth_accuracy=matrix(0,ncol=2,nrow=7)
+colnames(max_depth_accuracy) <- c("max_depth", "test accuracy")
+
+for(i in 2:8){
+model = xgb.train(data = xgb_train2, max.depth = i, watchlist=watchlist, nrounds = 1000, verbose = 0)
+final_rounds = as.integer(model$evaluation_log[which.min(test_rmse),1])
+train_xgb2 = xgboost(data = xgb_train2, max.depth = i, nrounds = final_rounds, verbose = 0)
+xgb_pred2 = predict(train_xgb2, xgb_test2)
+pred = rep(0,length(xgb_pred2))
+pred[xgb_pred2>0.5] = 1
+max_depth_accuracy[i-1,2] <- round(mean(pred==test2$expert_label),3)
+max_depth_accuracy[i-1,1]=i
+}
+max_depth_accuracy
+```
+
+## Adjust min_child_weight in xgboost to check parameter influence 
+```{r}
+min_child_weight_test_accuracy=matrix(0,ncol=2,nrow=6)
+colnames(min_child_weight_test_accuracy) <- c("min_child_weight", "test accuracy")
+
+for(i in 1:6){
+model = xgb.train(data = xgb_train2, min_child_weight=i, watchlist=watchlist, nrounds = 1000, verbose = 0)
+final_rounds = as.integer(model$evaluation_log[which.min(test_rmse),1])
+train_xgb2 = xgboost(data = xgb_train2, min_child_weight=i, nrounds = final_rounds, verbose = 0)
+xgb_pred2 = predict(train_xgb2, xgb_test2)
+pred = rep(0,length(xgb_pred2))
+pred[xgb_pred2>0.5] = 1
+min_child_weight_test_accuracy[i,2] <- round(mean(pred==test2$expert_label),3)
+min_child_weight_test_accuracy[i,1]=i
+}
+min_child_weight_test_accuracy
+```
+
+## Adjust eta in xgboost to check parameter influence
+```{r}
+eta_test_accuracy=matrix(0,ncol=2,nrow=5)
+colnames(eta_test_accuracy) <- c("eta", "test accuracy")
+
+for(i in 1:5){
+model = xgb.train(data = xgb_train2, eta=i/10, watchlist=watchlist, nrounds = 1000, verbose = 0)
+final_rounds = as.integer(model$evaluation_log[which.min(test_rmse),1])
+train_xgb2 = xgboost(data = xgb_train2, eta=i/10, nrounds = final_rounds, verbose = 0)
+xgb_pred2 = predict(train_xgb2, xgb_test2)
+pred = rep(0,length(xgb_pred2))
+pred[xgb_pred2>0.5] = 1
+eta_test_accuracy[i,2] <- round(mean(pred==test2$expert_label),3)
+eta_test_accuracy[i,1]=i/10
+}
+eta_test_accuracy
+```
+
+## Adjust subsample in xgboost to check parameter influence
+```{r}
+subsample_test_accuracy=matrix(0,ncol=2,nrow=6)
+colnames(subsample_test_accuracy) <- c("subsample", "test accuracy")
+
+for(i in 5:10){
+model = xgb.train(data = xgb_train2, subsample=i/10, watchlist=watchlist, nrounds = 1000, verbose = 0)
+final_rounds = as.integer(model$evaluation_log[which.min(test_rmse),1])
+train_xgb2 = xgboost(data = xgb_train2, subsample=i/10, nrounds = final_rounds, verbose = 0)
+xgb_pred2 = predict(train_xgb2, xgb_test2)
+pred = rep(0,length(xgb_pred2))
+pred[xgb_pred2>0.5] = 1
+subsample_test_accuracy[i-4,2] <- round(mean(pred==test2$expert_label),3)
+subsample_test_accuracy[i-4,1]=i/10
+}
+subsample_test_accuracy
+```
+
+## Adjust colsample_bynode in xgboost to check parameter influence
+```{r}
+colsample_bynode_test_accuracy=matrix(0,ncol=2,nrow=6)
+colnames(colsample_bynode_test_accuracy) <- c("colsample_bynode", "test accuracy")
+
+for(i in 5:10){
+model = xgb.train(data = xgb_train2, colsample_bynode=i/10, watchlist=watchlist, nrounds = 1000, verbose = 0)
+final_rounds = as.integer(model$evaluation_log[which.min(test_rmse),1])
+train_xgb2 = xgboost(data = xgb_train2, colsample_bynode=i/10, nrounds = final_rounds, verbose = 0)
+xgb_pred2 = predict(train_xgb2, xgb_test2)
+pred = rep(0,length(xgb_pred2))
+pred[xgb_pred2>0.5] = 1
+colsample_bynode_test_accuracy[i-4,2] <- round(mean(pred==test2$expert_label),3)
+colsample_bynode_test_accuracy[i-4,1]=i/10
+}
+colsample_bynode_test_accuracy
+```
+## (a) method 1
+```{r}
+xgb_train = xgb.DMatrix(data = data.matrix(train1[,c("NDAI","SD","CORR")]), label = train1$expert_label)
+xgb_test = xgb.DMatrix(data = data.matrix(test1[,c("NDAI","SD","CORR")]), label = test1$expert_label)
+watchlist = list(train=xgb_train, test=xgb_test)
+```
+
+## Adjust max.depth in xgboost to check parameter influence method 1
+```{r}
+max_depth_accuracy1=matrix(0,ncol=2,nrow=7)
+colnames(max_depth_accuracy1) <- c("max_depth", "test accuracy")
+
+for(i in 2:8){
+model = xgb.train(data = xgb_train, max.depth = i, watchlist=watchlist, nrounds = 1000, verbose = 0)
+final_rounds = as.integer(model$evaluation_log[which.min(test_rmse),1])
+train_xgb1 = xgboost(data = xgb_train, max.depth = i, nrounds = final_rounds, verbose = 0)
+xgb_pred1 = predict(train_xgb1, xgb_test)
+pred = rep(0,length(xgb_pred1))
+pred[xgb_pred1>0.5] = 1
+
+max_depth_accuracy1[i-1,2] <- round(mean(pred==test1$expert_label),3)
+max_depth_accuracy1[i-1,1]=i
+}
+max_depth_accuracy1
+```
+```{r}
+xgb_train = xgb.DMatrix(data = data.matrix(train1[,c("NDAI","SD","CORR")]), label = train1$expert_label)
+xgb_test = xgb.DMatrix(data = data.matrix(test1[,c("NDAI","SD","CORR")]), label = test1$expert_label)
+watchlist = list(train=xgb_train, test=xgb_test)
+```
+
+## Adjust min_child_weight in xgboost to check parameter influence method 1
+```{r}
+min_child_weight_test_accuracy1=matrix(0,ncol=2,nrow=6)
+colnames(min_child_weight_test_accuracy1) <- c("min_child_weight", "test accuracy")
+
+for(i in 1:6){
+model = xgb.train(data = xgb_train, min_child_weight = i, watchlist=watchlist, nrounds = 1000, verbose = 0)
+final_rounds = as.integer(model$evaluation_log[which.min(test_rmse),1])
+train_xgb1 = xgboost(data = xgb_train, min_child_weight = i, nrounds = final_rounds, verbose = 0)
+xgb_pred1 = predict(train_xgb1, xgb_test)
+pred = rep(0,length(xgb_pred1))
+pred[xgb_pred1>0.5] = 1
+
+min_child_weight_test_accuracy1[i,2] <- round(mean(pred==test1$expert_label),3)
+min_child_weight_test_accuracy1[i,1]=i
+}
+min_child_weight_test_accuracy1
+```
+
+## Adjust eta in xgboost to check parameter influence method 1
+```{r}
+eta_test_accuracy1=matrix(0,ncol=2,nrow=5)
+colnames(eta_test_accuracy1) <- c("eta", "test accuracy")
+
+for(i in 1:5){
+model = xgb.train(data = xgb_train, eta = i/10, watchlist=watchlist, nrounds = 1000, verbose = 0)
+final_rounds = as.integer(model$evaluation_log[which.min(test_rmse),1])
+train_xgb1 = xgboost(data = xgb_train, eta = i/10, nrounds = final_rounds, verbose = 0)
+xgb_pred1 = predict(train_xgb1, xgb_test)
+pred = rep(0,length(xgb_pred1))
+pred[xgb_pred1>0.5] = 1
+
+eta_test_accuracy1[i,2] <- round(mean(pred==test1$expert_label),3)
+eta_test_accuracy1[i,1]=i
+}
+eta_test_accuracy1
+```
+
+## Adjust subsample in xgboost to check parameter influence method 1
+```{r}
+subsample_test_accuracy1=matrix(0,ncol=2,nrow=6)
+colnames(subsample_test_accuracy1) <- c("subsample", "test accuracy")
+
+for(i in 5:10){
+model = xgb.train(data = xgb_train, subsample = i/10, watchlist=watchlist, nrounds = 1000, verbose = 0)
+final_rounds = as.integer(model$evaluation_log[which.min(test_rmse),1])
+train_xgb1 = xgboost(data = xgb_train, subsample = i/10, nrounds = final_rounds, verbose = 0)
+xgb_pred1 = predict(train_xgb1, xgb_test)
+pred = rep(0,length(xgb_pred1))
+pred[xgb_pred1>0.5] = 1
+
+subsample_test_accuracy1[i-4,2] <- round(mean(pred==test2$expert_label),3)
+subsample_test_accuracy1[i-4,1]=i/10
+}
+subsample_test_accuracy1
+```
+
+## Adjust colsample_bynode in xgboost to check parameter influence method1
+```{r}
+colsample_bynode_test_accuracy1=matrix(0,ncol=2,nrow=6)
+colnames(colsample_bynode_test_accuracy1) <- c("colsample_bynode", "test accuracy")
+
+for(i in 5:10){
+model = xgb.train(data = xgb_train, colsample_bynode = i/10, watchlist=watchlist, nrounds = 1000, verbose = 0)
+final_rounds = as.integer(model$evaluation_log[which.min(test_rmse),1])
+train_xgb1 = xgboost(data = xgb_train, colsample_bynode = i/10, nrounds = final_rounds, verbose = 0)
+xgb_pred1 = predict(train_xgb1, xgb_test)
+pred = rep(0,length(xgb_pred1))
+pred[xgb_pred1>0.5] = 1
+
+colsample_bynode_test_accuracy1[i-4,2] <- round(mean(pred==test2$expert_label),3)
+colsample_bynode_test_accuracy1[i-4,1]=i/10
+}
+colsample_bynode_test_accuracy1
+```
+
+The best model (method 1) have following parameter:
+max.depth = 3,
+min_child_weight=1,
+eta=0.3,
+subsample=0.6,
+colsample_bynode=0.6
+```{r}
+xgb_train = xgb.DMatrix(data = data.matrix(train1[,c("NDAI","SD","CORR")]), label = train1$expert_label)
+xgb_test = xgb.DMatrix(data = data.matrix(test1[,c("NDAI","SD","CORR")]), label = test1$expert_label)
+watchlist = list(train=xgb_train, test=xgb_test)
+
+model = xgb.train(data = xgb_train, max.depth = 3,min_child_weight=1, eta=0.3,subsample=0.6,colsample_bynode=0.6,watchlist=watchlist, nrounds = 1000, verbose = 0)
+final_rounds = as.integer(model$evaluation_log[which.min(test_rmse),1])
+train_xgb1 = xgboost(data = xgb_train, max.depth = 3,min_child_weight=1, eta=0.3,subsample=0.6,colsample_bynode=0.6, nrounds = final_rounds, verbose = 0)
+xgb_pred1 = predict(train_xgb1, xgb_test)
+pred = rep(0,length(xgb_pred1))
+pred[xgb_pred1>0.5] = 1
+round(mean(pred==test1$expert_label),3)
+```
+
+
+The best model (method 2) have following parameter:
+max.depth = 6,
+min_child_weight=1,
+eta=0.1,
+subsample=1,
+colsample_bynode=0.8
+```{r}
+# best model after adjustment
+xgb_train2 = xgb.DMatrix(data = data.matrix(train2[,c("NDAI","SD","CORR")]), label = train2$expert_label)
+xgb_test2 = xgb.DMatrix(data = data.matrix(test2[,c("NDAI","SD","CORR")]), label = test2$expert_label)
+watchlist = list(train=xgb_train2, test=xgb_test2)
+
+model = xgb.train(data = xgb_train2, max.depth = 6,min_child_weight=1, eta=0.1,subsample=1,colsample_bynode=0.8,watchlist=watchlist, nrounds = 1000, verbose = 0)
+
+final_rounds = as.integer(model$evaluation_log[which.min(test_rmse),1])
+train_xgb2 = xgboost(data = xgb_train2, max.depth = 6,min_child_weight=1, eta=0.1,subsample=1,colsample_bynode=0.8,nrounds = final_rounds, verbose = 0)
+xgb_pred2 = predict(train_xgb2, xgb_test2)
+pred = rep(0,length(xgb_pred2))
+pred[xgb_pred2>0.5] = 1
+
+round(mean(pred==test2$expert_label),3)
+```
+
+
+
+```{r}
+# 用3a得到的model,先不调整参数，在原图里highlight missclassification point
+# XGBoost
+# method 1
+#xgb_train = xgb.DMatrix(data = data.matrix(train1[,c("NDAI","SD","CORR")]), label = train1$expert_label)
+#xgb_test = xgb.DMatrix(data = data.matrix(test1[,c("NDAI","SD","CORR")]), label = test1$expert_label)
+#watchlist = list(train=xgb_train, test=xgb_test)
+#model = xgb.train(data = xgb_train, max.depth = 3, watchlist=watchlist, nrounds = 1000, verbose = 0)
+#final_rounds = as.integer(model$evaluation_log[which.min(test_rmse),1])
+#train_xgb1 = xgboost(data = xgb_train, max.depth = 3, nrounds = final_rounds, verbose = 0)
+xgb_pred1 = predict(train_xgb1, xgb_test)
+pred = rep(0,length(xgb_pred1))
+pred[xgb_pred1>0.5] = 1
+
+miss_x_method1=c()
+miss_y_method1=c()
+miss_image_method1=c()
+n=length(test1$expert_label)
+for(i in 1:n){
+  if (pred[i]!=test1$expert_label[i]){
+    miss_x_method1=c(miss_x_method1,test1$x[i])
+    miss_y_method1=c(miss_y_method1,test1$y[i])
+    miss_image_method1=c(miss_image_method1,test1$image_num[i])
+  }
+}
+miss_method1_df=data.frame(miss_x_method1,miss_y_method1,miss_image_method1)
+miss_method1_df_image1=subset(miss_method1_df,miss_image_method2==1)
+miss_method1_df_image2=subset(miss_method1_df,miss_image_method2==2)
+miss_method1_df_image3=subset(miss_method1_df,miss_image_method2==3)
+
+
+
+# methdod 2
+#xgb_train2 = xgb.DMatrix(data = data.matrix(train2[,c("NDAI","SD","CORR")]), label = train2$expert_label)
+#xgb_test2 = xgb.DMatrix(data = data.matrix(test2[,c("NDAI","SD","CORR")]), label = test2$expert_label)
+#watchlist = list(train=xgb_train2, test=xgb_test2)
+#model = xgb.train(data = xgb_train2, max.depth = 3, watchlist=watchlist, nrounds = 1000, verbose = 0)
+#final_rounds = as.integer(model$evaluation_log[which.min(test_rmse),1])
+#train_xgb2 = xgboost(data = xgb_train2, max.depth = 3, nrounds = final_rounds, verbose = 0)
+xgb_pred2 = predict(train_xgb2, xgb_test2)
+pred = rep(0,length(xgb_pred2))
+pred[xgb_pred2>0.5] = 1
+
+miss_x_method2=c()
+miss_y_method2=c()
+miss_image_method2=c()
+n=length(test2$expert_label)
+for(i in 1:n){
+  if (pred[i]!=test2$expert_label[i]){
+    miss_x_method2=c(miss_x_method2,test2$x[i])
+    miss_y_method2=c(miss_y_method2,test2$y[i])
+    miss_image_method2=c(miss_image_method2,test2$image_num[i])
+  }
+}
+miss_method2_df=data.frame(miss_x_method2,miss_y_method2,miss_image_method2)
+miss_method2_df_image1=subset(miss_method2_df,miss_image_method2==1)
+miss_method2_df_image2=subset(miss_method2_df,miss_image_method2==2)
+miss_method2_df_image3=subset(miss_method2_df,miss_image_method2==3)
+```
+
+# method 1 missclassification points location
+```{r}
+myColors = c("gray40","black","white","red")
+p1 = ggplot() + 
+  geom_point(data=image1, aes(x, y, colour = factor(expert_label)))+
+  scale_color_manual(values=myColors)+
+  geom_point(data=miss_method1_df_image1,mapping=aes(x = miss_x_method1, y = miss_y_method1, color = "misclassification"))+
+  labs(color="exper_label")+ theme(legend.position = "none")
+
+p2 = ggplot() + 
+  geom_point(data=image2, aes(x, y, colour = factor(expert_label)))+
+  scale_color_manual(values=myColors)+
+  geom_point(data=miss_method1_df_image2,mapping=aes(x = miss_x_method1, y = miss_y_method1, color = "misclassification"))+
+  labs(color="expert_label")+ theme(legend.position = "none")
+
+p3 = ggplot() + 
+  geom_point(data=image3, aes(x, y, colour = factor(expert_label)))+
+  scale_color_manual(values=myColors)+
+  geom_point(data=miss_method1_df_image3,mapping=aes(x = miss_x_method1, y = miss_y_method1, color = "misclassification"))+
+  labs(colour="expert_label")+ theme(legend.position = "none")
+```
+
+```{r,fig.width=8,fig.height=3}
+gg_legend <- ggplot() + 
+  geom_point(data=image1, aes(x, y, colour = factor(expert_label)))+
+  scale_color_manual(values=myColors)+
+  geom_point(data=miss_method1_df_image1,mapping=aes(x = miss_x_method1, y = miss_y_method1, color = "misclassification"))+
+  labs(colour="expert_label") +
+  theme(legend.position = "bottom")
+shared_legend <- extract_legend(gg_legend)
+g=arrangeGrob(arrangeGrob(p1,p2,p3,ncol=3), shared_legend,nrow = 2, heights = c(10, 1))
+ggsave("method1_missclassification.png",g,height=3,width = 8,dpi=600)
+```
+
+# method 2 missclassification points location
+```{r}
+myColors = c("gray40","black","white","red")
+p1 = ggplot() + 
+  geom_point(data=image1, aes(x, y, colour = factor(expert_label)))+
+  scale_color_manual(values=myColors)+
+  geom_point(data=miss_method2_df_image1,mapping=aes(x = miss_x_method2, y = miss_y_method2, color = "misclassification"))+
+  labs(color="exper_label")+ theme(legend.position = "none")
+
+p2 = ggplot() + 
+  geom_point(data=image2, aes(x, y, colour = factor(expert_label)))+
+  scale_color_manual(values=myColors)+
+  geom_point(data=miss_method2_df_image2,mapping=aes(x = miss_x_method2, y = miss_y_method2, color = "misclassification"))+
+  labs(color="expert_label")+ theme(legend.position = "none")
+
+p3 = ggplot() + 
+  geom_point(data=image3, aes(x, y, colour = factor(expert_label)))+
+  scale_color_manual(values=myColors)+
+  geom_point(data=miss_method2_df_image3,mapping=aes(x = miss_x_method2, y = miss_y_method2, color = "misclassification"))+
+  labs(colour="expert_label")+ theme(legend.position = "none")
+```
+
+```{r,fig.width=8,fig.height=3}
+gg_legend <- ggplot() + 
+  geom_point(data=image1, aes(x, y, colour = factor(expert_label)))+
+  scale_color_manual(values=myColors)+
+  geom_point(data=miss_method2_df_image1,mapping=aes(x = miss_x_method2, y = miss_y_method2, color = "misclassification"))+
+  labs(colour="expert_label") +
+  theme(legend.position = "bottom")
+
+shared_legend <- extract_legend(gg_legend)
+g=arrangeGrob(arrangeGrob(p1,p2,p3,ncol=3), shared_legend,nrow = 2, heights = c(10, 1))
+ggsave("method2_missclassification.png",g,height=3,width = 8,dpi=600)
+```
+
+
 
 
 # Acknowledgement
-GridExtra to combine shared labels: https://statisticsglobe.com/add-common-legend-to-combined-ggplot2-plots-in-r/
-Heatmap for correlations: http://www.sthda.com/english/wiki/ggplot2-quick-correlation-matrix-heatmap-r-software-and-data-visualization
 
 ***
