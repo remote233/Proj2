@@ -20,7 +20,7 @@ Firstly, we wrote our codes in the Proj2.Rmd and CVmaster.R according to the req
 
 In 2(d) of the project, we are asked to write a CVmaster funcion in a separate R script file and use this in the later part. It takes input including:
 
--   $\textbf{gen_model}$ which is a function that will run a specific classifier.
+-   $\textbf{"gen_model"}$ which is a function that will run a specific classifier.
 -   $\textbf{train_feature}$ which is a dataframe containing values of features in we want to use for prediction.
 -   $\textbf{train_label}$ which is a vector representing the actual value of labels of our training datasets.
 -   $\textbf{train_folds}$ which is a vector representing the fold number of each pixels we divided before using the CVmaster function.
